@@ -34,12 +34,10 @@ import {
 } from '@/components/ui/tooltip';
 import { useToast } from '@/hooks/use-toast';
 import { languages } from '@/lib/languages';
-import { translateText, detectLanguage, answerQuestion } from '@/app/actions';
+import { translateText, detectLanguage, answerQuestion, transcribeAudio } from '@/app/actions';
 import { Logo } from '@/components/icons';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-
-type SpeechRecognition = any;
 
 export default function Home() {
   const [sourceLang, setSourceLang] = useState('en');
@@ -47,6 +45,7 @@ export default function Home() {
   const [sourceText, setSourceText] = useState('');
   const [translatedText, setTranslatedText] = useState('');
   const [isRecording, setIsRecording] = useState(false);
+  const [isTranscribing, setIsTranscribing] = useState(false);
   const [isTranslating, setIsTranslating] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [isClient, setIsClient] = useState(false);
@@ -58,22 +57,18 @@ export default function Home() {
   const [hasMicPermission, setHasMicPermission] = useState<boolean | null>(null);
 
   const { toast } = useToast();
-  const speechRecognitionRef = useRef<SpeechRecognition | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const audioPlaybackRef = useRef<HTMLAudioElement | null>(null);
   const audioStreamRef = useRef<MediaStream | null>(null);
 
-
   useEffect(() => {
-    console.log("Component mounted");
     setIsClient(true);
     // Check for microphone permission on initial load
     navigator.mediaDevices.getUserMedia({ audio: true })
       .then(stream => {
         setHasMicPermission(true);
-        audioStreamRef.current = stream;
-        // Stop tracks to release microphone
+        // Stop tracks to release microphone, we will request it again when needed
         stream.getTracks().forEach(track => track.stop());
       })
       .catch(() => {
@@ -82,86 +77,104 @@ export default function Home() {
   }, []);
 
   const canShare = isClient && typeof navigator !== 'undefined' && !!navigator.share;
-  const hasSpeechRecognition = isClient && ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window);
   const hasSpeechSynthesis = isClient && 'speechSynthesis' in window;
   const hasMediaRecorder = isClient && 'MediaRecorder' in window;
 
-  const initializeMedia = useCallback(async () => {
-    console.log("Attempting to initialize media...");
-    if (!hasSpeechRecognition || !hasMediaRecorder) {
-        console.log("Speech recognition or MediaRecorder not supported.");
-        return false;
+
+  const handleTranslate = useCallback(async () => {
+    if (!sourceText.trim()) return;
+    setIsTranslating(true);
+    setTranslatedText('');
+    const detected = await detectLanguage(sourceText);
+    if (detected && languages.some(l => l.value.startsWith(detected))) {
+      setSourceLang(detected);
     }
+    const translation = await translateText(sourceText, detected || sourceLang, targetLang);
+    setTranslatedText(translation);
+    setIsTranslating(false);
+  }, [sourceText, sourceLang, targetLang]);
 
-    try {
-      console.log("Requesting microphone permission...");
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      audioStreamRef.current = stream;
-      console.log("Microphone permission granted.");
-      setHasMicPermission(true);
+  const handleStopRecording = useCallback(async () => {
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
+      mediaRecorderRef.current.onstop = async () => {
+        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+        const audioUrl = URL.createObjectURL(audioBlob);
+        setRecordedAudioUrl(audioUrl);
+        
+        setIsTranscribing(true);
+        setSourceText('Transcribing audio...');
 
-      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-      const recognition = new SpeechRecognition();
-      recognition.continuous = true;
-      recognition.interimResults = true;
-      recognition.lang = sourceLang;
-      console.log("SpeechRecognition initialized with lang:", sourceLang);
-
-      recognition.onresult = (event: any) => {
-        let interimTranscript = '';
-        let finalTranscript = '';
-        for (let i = event.resultIndex; i < event.results.length; ++i) {
-          if (event.results[i].isFinal) {
-            finalTranscript += event.results[i][0].transcript;
-          } else {
-            interimTranscript += event.results[i][0].transcript;
-          }
-        }
-        console.log("Speech recognition result:", { finalTranscript, interimTranscript });
-        setSourceText(finalTranscript + interimTranscript);
-      };
-
-      recognition.onend = () => {
-        console.log("Speech recognition ended.");
-      };
-
-      recognition.onerror = (event: any) => {
-        console.error('Speech recognition error:', event.error);
-        if (event.error !== 'no-speech') {
+        try {
+          // Convert blob to base64 data URI
+          const reader = new FileReader();
+          reader.readAsDataURL(audioBlob);
+          reader.onloadend = async () => {
+            const base64Audio = reader.result as string;
+            const transcriptionResult = await transcribeAudio(base64Audio);
+            if (transcriptionResult) {
+              setSourceText(transcriptionResult);
+            } else {
+              setSourceText('');
+              toast({
+                variant: 'destructive',
+                title: 'Transcription Failed',
+                description: 'Could not transcribe the audio.',
+              });
+            }
+            setIsTranscribing(false);
+          };
+        } catch (error) {
+          console.error('Transcription error:', error);
+          setSourceText('');
           toast({
             variant: 'destructive',
-            title: 'Speech Recognition Error',
-            description: event.error,
+            title: 'Transcription Error',
+            description: 'An error occurred during transcription.',
           });
+          setIsTranscribing(false);
+        }
+
+        audioChunksRef.current = [];
+        if(audioStreamRef.current) {
+          audioStreamRef.current.getTracks().forEach(track => track.stop());
+          audioStreamRef.current = null;
         }
       };
-      speechRecognitionRef.current = recognition;
+      mediaRecorderRef.current.stop();
+    }
+    setIsRecording(false);
+  }, [toast]);
+
+  const handleStartRecording = useCallback(async () => {
+    if (!hasMediaRecorder) {
+      toast({
+        variant: 'destructive',
+        title: 'Recording not supported',
+        description: 'Your browser does not support audio recording.',
+      });
+      return;
+    }
+    setSourceText('');
+    setTranslatedText('');
+    setRecordedAudioUrl(null);
+    audioChunksRef.current = [];
+
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      audioStreamRef.current = stream;
+      setHasMicPermission(true);
 
       const mediaRecorder = new MediaRecorder(stream);
       mediaRecorderRef.current = mediaRecorder;
 
       mediaRecorder.ondataavailable = (event) => {
         if (event.data.size > 0) {
-          console.log("MediaRecorder data available, chunk size:", event.data.size);
           audioChunksRef.current.push(event.data);
         }
       };
-
-      mediaRecorder.onstop = () => {
-        console.log("MediaRecorder stopped.");
-        if (audioChunksRef.current.length > 0) {
-            const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
-            const audioUrl = URL.createObjectURL(audioBlob);
-            console.log("Created audio URL:", audioUrl, "from blob size:", audioBlob.size);
-            setRecordedAudioUrl(audioUrl);
-        } else {
-            console.log("No audio chunks to create a recording from.");
-        }
-      };
-
-      console.log("MediaRecorder initialized.");
-      return true;
       
+      mediaRecorder.start();
+      setIsRecording(true);
     } catch (err) {
       console.error('Error accessing microphone:', err);
       setHasMicPermission(false);
@@ -170,71 +183,19 @@ export default function Home() {
         title: 'Microphone Access Denied',
         description: 'Please allow microphone access in your browser settings.',
       });
-      return false;
     }
-  }, [hasSpeechRecognition, hasMediaRecorder, sourceLang, toast]);
-
-  const handleTranslate = useCallback(async () => {
-    if (!sourceText.trim()) return;
-    console.log("Translate button clicked.");
-    setIsTranslating(true);
-    setTranslatedText('');
-    console.log("Detecting language for:", sourceText);
-    const detected = await detectLanguage(sourceText);
-    console.log("Detected language:", detected);
-    if (detected && languages.some(l => l.value.startsWith(detected))) {
-      setSourceLang(detected);
-    }
-    console.log("Translating text from", detected || sourceLang, "to", targetLang);
-    const translation = await translateText(sourceText, detected || sourceLang, targetLang);
-    console.log("Translation result:", translation);
-    setTranslatedText(translation);
-    setIsTranslating(false);
-  }, [sourceText, sourceLang, targetLang]);
-
+  }, [hasMediaRecorder, toast]);
 
   const handleMicClick = async () => {
     if (isRecording) {
-      console.log("Stopping recording...");
-      if (speechRecognitionRef.current) {
-        speechRecognitionRef.current.stop();
-      }
-      if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
-        mediaRecorderRef.current.stop();
-      }
-      if(audioStreamRef.current) {
-        audioStreamRef.current.getTracks().forEach(track => track.stop());
-      }
-      setIsRecording(false);
+      await handleStopRecording();
     } else {
-      console.log("Starting recording...");
-      setSourceText('');
-      setTranslatedText('');
-      setRecordedAudioUrl(null);
-      audioChunksRef.current = [];
-      
-      const mediaInitialized = await initializeMedia();
-
-      if (mediaInitialized && mediaRecorderRef.current && speechRecognitionRef.current) {
-        mediaRecorderRef.current.start();
-        try {
-          speechRecognitionRef.current.start();
-          setIsRecording(true);
-        } catch(e) {
-            console.error("Could not start speech recognition: ", e);
-            // If speech recognition fails to start, stop the media recorder as well.
-            if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
-              mediaRecorderRef.current.stop();
-            }
-            setIsRecording(false);
-        }
-      }
+      await handleStartRecording();
     }
   };
   
   const handleSwapLanguages = () => {
-    if(isTranslating) return;
-    console.log("Swapping languages.");
+    if(isTranslating || isTranscribing) return;
     setSourceLang(targetLang);
     setTargetLang(sourceLang);
     setSourceText(translatedText);
@@ -243,19 +204,17 @@ export default function Home() {
 
   const handleSpeak = () => {
     if (!hasSpeechSynthesis || !translatedText.trim() || isSpeaking) return;
-    console.log("Speaking translation...");
     speechSynthesis.cancel();
     const utterance = new SpeechSynthesisUtterance(translatedText);
     utterance.lang = targetLang;
     utterance.onstart = () => setIsSpeaking(true);
-    utterance.onend = () => { console.log("Speaking finished."); setIsSpeaking(false); };
-    utterance.onerror = () => { console.error("Speech synthesis error."); setIsSpeaking(false); };
+    utterance.onend = () => setIsSpeaking(false);
+    utterance.onerror = () => setIsSpeaking(false);
     speechSynthesis.speak(utterance);
   };
   
   const handlePlayRecording = () => {
     if (!recordedAudioUrl) return;
-    console.log("Playing recording from URL:", recordedAudioUrl);
     if (audioPlaybackRef.current) {
       if (audioPlaybackRef.current.paused) {
         audioPlaybackRef.current.play();
@@ -268,14 +227,12 @@ export default function Home() {
 
   const handleCopy = () => {
     if (!translatedText) return;
-    console.log("Copying translation to clipboard.");
     navigator.clipboard.writeText(translatedText);
     toast({ title: 'Copied to clipboard!' });
   };
 
   const handleShare = async () => {
     if (canShare && translatedText) {
-      console.log("Sharing translation.");
       try {
         await navigator.share({
           title: 'AccuAI Translation',
@@ -289,32 +246,30 @@ export default function Home() {
 
   const handleAskQuestion = async () => {
     if (!question.trim() || !translatedText.trim()) return;
-    console.log("Asking question:", question);
     setIsAnswering(true);
     setAnswer('');
     const result = await answerQuestion(translatedText, question);
-    console.log("Answer received:", result);
     setAnswer(result);
     setIsAnswering(false);
   };
   
   useEffect(() => {
     if (recordedAudioUrl) {
-      console.log("New recorded audio URL available. Creating Audio object.");
       const audio = new Audio(recordedAudioUrl);
-      audio.onplay = () => { console.log("Audio playback started."); setIsPlayingRecording(true); };
-      audio.onpause = () => { console.log("Audio playback paused."); setIsPlayingRecording(false); };
-      audio.onended = () => { console.log("Audio playback ended."); setIsPlayingRecording(false); };
+      audio.onplay = () => setIsPlayingRecording(true);
+      audio.onpause = () => setIsPlayingRecording(false);
+      audio.onended = () => setIsPlayingRecording(false);
       audio.onerror = (e) => { console.error("Audio playback error:", e); setIsPlayingRecording(false); };
       audioPlaybackRef.current = audio;
     }
     return () => {
       if (recordedAudioUrl) {
-        console.log("Revoking audio URL:", recordedAudioUrl);
         URL.revokeObjectURL(recordedAudioUrl);
       }
     }
   }, [recordedAudioUrl]);
+
+  const isUIBlocked = isTranslating || isRecording || isTranscribing;
 
   return (
     <TooltipProvider>
@@ -327,7 +282,7 @@ export default function Home() {
         <Card className="w-full max-w-4xl shadow-2xl">
           <CardHeader>
              <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-              <Select value={sourceLang} onValueChange={(value) => { console.log("Source language changed to:", value); setSourceLang(value);}} disabled={isTranslating || isRecording}>
+              <Select value={sourceLang} onValueChange={setSourceLang} disabled={isUIBlocked}>
                 <SelectTrigger className="w-full sm:w-[180px]">
                   <SelectValue placeholder="Source language" />
                 </SelectTrigger>
@@ -340,11 +295,11 @@ export default function Home() {
                 </SelectContent>
               </Select>
 
-              <Button variant="ghost" size="icon" onClick={handleSwapLanguages} disabled={isTranslating}>
+              <Button variant="ghost" size="icon" onClick={handleSwapLanguages} disabled={isUIBlocked}>
                 <ArrowRightLeft className="h-5 w-5" />
               </Button>
 
-              <Select value={targetLang} onValueChange={(value) => { console.log("Target language changed to:", value); setTargetLang(value);}} disabled={isTranslating || isRecording}>
+              <Select value={targetLang} onValueChange={setTargetLang} disabled={isUIBlocked}>
                 <SelectTrigger className="w-full sm:w-[180px]">
                   <SelectValue placeholder="Target language" />
                 </SelectTrigger>
@@ -361,22 +316,22 @@ export default function Home() {
           <CardContent className="grid md:grid-cols-2 gap-6">
             <div className="flex flex-col gap-4">
               <Textarea
-                placeholder="Type or speak..."
+                placeholder={isTranscribing ? "Transcribing audio..." : "Type or speak..."}
                 value={sourceText}
                 onChange={(e) => setSourceText(e.target.value)}
                 className="min-h-[200px] text-base resize-none"
-                disabled={isTranslating || isRecording}
+                disabled={isUIBlocked}
               />
               <div className="flex items-center justify-between gap-2">
                 <div className="flex items-center gap-2">
                    <Tooltip>
                     <TooltipTrigger asChild>
-                      <Button size="icon" onClick={handleMicClick} disabled={!hasSpeechRecognition || isTranslating || hasMicPermission === null}>
-                        {isRecording ? <Loader2 className="h-5 w-5 animate-spin" /> : <Mic className="h-5 w-5" />}
+                      <Button size="icon" onClick={handleMicClick} disabled={!hasMediaRecorder || isTranslating || isTranscribing || hasMicPermission === null}>
+                        {isRecording ? <Pause className="h-5 w-5 text-red-500" /> : <Mic className="h-5 w-5" />}
                       </Button>
                     </TooltipTrigger>
                     <TooltipContent>
-                      <p>{!hasSpeechRecognition ? 'Speech recognition not supported' : isRecording ? 'Stop recording' : 'Start recording'}</p>
+                      <p>{!hasMediaRecorder ? 'Audio recording not supported' : isRecording ? 'Stop recording' : 'Start recording'}</p>
                     </TooltipContent>
                   </Tooltip>
                   <Tooltip>
@@ -390,11 +345,11 @@ export default function Home() {
                     </TooltipContent>
                   </Tooltip>
                 </div>
-                <Button onClick={handleTranslate} disabled={!sourceText.trim() || isTranslating || isRecording}>
-                  {isTranslating ? (
+                <Button onClick={handleTranslate} disabled={!sourceText.trim() || isUIBlocked}>
+                  {isTranslating || isTranscribing ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Translating...
+                      {isTranscribing ? 'Transcribing...' : 'Translating...'}
                     </>
                   ) : (
                     'Translate'
