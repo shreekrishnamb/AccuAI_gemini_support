@@ -111,7 +111,6 @@ export default function Home() {
       recognition.onend = () => {
         console.log("Speech recognition ended.");
         setIsRecording(false);
-        // We should not stop media recorder here, only when user clicks stop
       };
 
       recognition.onerror = (event: any) => {
@@ -124,7 +123,6 @@ export default function Home() {
           });
         }
         setIsRecording(false);
-        // We should not stop media recorder here, as it might be a transient error.
       };
       speechRecognitionRef.current = recognition;
 
@@ -244,13 +242,14 @@ export default function Home() {
   };
   
   const handlePlayRecording = () => {
-    if (!recordedAudioUrl || isPlayingRecording) return;
+    if (!recordedAudioUrl) return;
     console.log("Playing recording from URL:", recordedAudioUrl);
     if (audioPlaybackRef.current) {
       if (audioPlaybackRef.current.paused) {
         audioPlaybackRef.current.play();
       } else {
         audioPlaybackRef.current.pause();
+        audioPlaybackRef.current.currentTime = 0;
       }
     }
   };
