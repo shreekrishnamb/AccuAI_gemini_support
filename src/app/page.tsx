@@ -55,6 +55,7 @@ export default function Home() {
   const [question, setQuestion] = useState('');
   const [answer, setAnswer] = useState('');
   const [isAnswering, setIsAnswering] = useState(false);
+  const [hasMicPermission, setHasMicPermission] = useState<boolean | null>(null);
 
   const { toast } = useToast();
   const speechRecognitionRef = useRef<SpeechRecognition | null>(null);
@@ -73,10 +74,11 @@ export default function Home() {
   const hasMediaRecorder = isClient && 'MediaRecorder' in window;
 
   const initializeMedia = useCallback(async () => {
-    if (!hasSpeechRecognition || !hasMediaRecorder) return null;
+    if (!hasSpeechRecognition || !hasMediaRecorder) return;
 
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      setHasMicPermission(true);
 
       const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
       const recognition = new SpeechRecognition();
@@ -105,9 +107,7 @@ export default function Home() {
       };
 
       recognition.onerror = (event: any) => {
-        if (event.error === 'no-speech') {
-          // This is a common case, so we don't need to show a toast.
-        } else {
+        if (event.error !== 'no-speech') {
           console.error('Speech recognition error:', event.error);
           toast({
             variant: 'destructive',
@@ -136,18 +136,21 @@ export default function Home() {
       };
       mediaRecorderRef.current = mediaRecorder;
       
-      return true;
-
     } catch (err) {
       console.error('Error accessing microphone:', err);
+      setHasMicPermission(false);
       toast({
         variant: 'destructive',
         title: 'Microphone Access Denied',
         description: 'Please allow microphone access in your browser settings.',
       });
-      return false;
     }
   }, [hasSpeechRecognition, hasMediaRecorder, sourceLang, toast]);
+
+  useEffect(() => {
+    initializeMedia();
+  }, [initializeMedia]);
+
 
   const handleTranslate = useCallback(async () => {
     if (!sourceText.trim()) return;
@@ -167,9 +170,10 @@ export default function Home() {
     if (isRecording) {
       speechRecognitionRef.current?.stop();
     } else {
-      const mediaInitialized = await initializeMedia();
-      if (!mediaInitialized) return;
-
+      if(hasMicPermission === false){
+        initializeMedia();
+        return;
+      }
       setSourceText('');
       setTranslatedText('');
       setRecordedAudioUrl(null);
@@ -306,7 +310,7 @@ export default function Home() {
                 <div className="flex items-center gap-2">
                    <Tooltip>
                     <TooltipTrigger asChild>
-                      <Button size="icon" onClick={handleMicClick} disabled={!hasSpeechRecognition || isTranslating}>
+                      <Button size="icon" onClick={handleMicClick} disabled={!hasSpeechRecognition || isTranslating || hasMicPermission === null}>
                         {isRecording ? <Loader2 className="h-5 w-5 animate-spin" /> : <Mic className="h-5 w-5" />}
                       </Button>
                     </TooltipTrigger>
@@ -317,11 +321,11 @@ export default function Home() {
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <Button size="icon" variant="outline" onClick={handlePlayRecording} disabled={!recordedAudioUrl || isPlayingRecording || isRecording}>
-                        <Play className="h-5 w-5" />
+                        {isPlayingRecording ? <Pause className="h-5 w-5" /> : <Play className="h-5 w-5" />}
                       </Button>
                     </TooltipTrigger>
                     <TooltipContent>
-                      <p>{!recordedAudioUrl ? "No recording to play" : "Play recording"}</p>
+                      <p>{!recordedAudioUrl ? "No recording to play" : isPlayingRecording ? "Pause playback" : "Play recording"}</p>
                     </TooltipContent>
                   </Tooltip>
                 </div>
