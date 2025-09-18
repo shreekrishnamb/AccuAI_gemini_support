@@ -17,6 +17,7 @@ import {
   Card,
   CardContent,
   CardHeader,
+  CardTitle,
 } from '@/components/ui/card';
 import {
   Select,
@@ -34,7 +35,7 @@ import {
 } from '@/components/ui/tooltip';
 import { useToast } from '@/hooks/use-toast';
 import { languages } from '@/lib/languages';
-import { translateText, detectLanguage, answerQuestion, transcribeAudio } from '@/app/actions';
+import { translateText, detectLanguage, answerQuestion } from '@/app/actions';
 import { Logo } from '@/components/icons';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -45,12 +46,10 @@ export default function Home() {
   const [sourceText, setSourceText] = useState('');
   const [translatedText, setTranslatedText] = useState('');
   const [isRecording, setIsRecording] = useState(false);
-  const [isTranscribing, setIsTranscribing] = useState(false);
   const [isTranslating, setIsTranslating] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [isClient, setIsClient] = useState(false);
   const [recordedAudioUrl, setRecordedAudioUrl] = useState<string | null>(null);
-  const [isPlayingRecording, setIsPlayingRecording] = useState(false);
   const [question, setQuestion] = useState('');
   const [answer, setAnswer] = useState('');
   const [isAnswering, setIsAnswering] = useState(false);
@@ -59,16 +58,13 @@ export default function Home() {
   const { toast } = useToast();
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
-  const audioPlaybackRef = useRef<HTMLAudioElement | null>(null);
   const audioStreamRef = useRef<MediaStream | null>(null);
 
   useEffect(() => {
     setIsClient(true);
-    // Check for microphone permission on initial load
     navigator.mediaDevices.getUserMedia({ audio: true })
       .then(stream => {
         setHasMicPermission(true);
-        // Stop tracks to release microphone, we will request it again when needed
         stream.getTracks().forEach(track => track.stop());
       })
       .catch(() => {
@@ -79,7 +75,6 @@ export default function Home() {
   const canShare = isClient && typeof navigator !== 'undefined' && !!navigator.share;
   const hasSpeechSynthesis = isClient && 'speechSynthesis' in window;
   const hasMediaRecorder = isClient && 'MediaRecorder' in window;
-
 
   const handleTranslate = useCallback(async () => {
     if (!sourceText.trim()) return;
@@ -94,11 +89,10 @@ export default function Home() {
     setIsTranslating(false);
   }, [sourceText, sourceLang, targetLang]);
 
-  const handleStopRecording = useCallback(async () => {
+  const handleStopRecording = useCallback(() => {
     if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
       mediaRecorderRef.current.stop();
     }
-    setIsRecording(false);
   }, []);
 
   const handleStartRecording = useCallback(async () => {
@@ -110,22 +104,21 @@ export default function Home() {
       });
       return;
     }
-    setSourceText('');
-    setTranslatedText('');
     setRecordedAudioUrl(null);
+    if (recordedAudioUrl) {
+      URL.revokeObjectURL(recordedAudioUrl);
+    }
     audioChunksRef.current = [];
 
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ 
-        audio: true
-      });
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: { channelCount: 2 } });
       audioStreamRef.current = stream;
       setHasMicPermission(true);
 
       const mimeTypes = [
-          'audio/webm;codecs=opus',
-          'audio/webm',
-          'audio/wav',
+        'audio/webm;codecs=opus',
+        'audio/webm',
+        'audio/wav',
       ];
       const supportedMimeType = mimeTypes.find(type => MediaRecorder.isTypeSupported(type));
 
@@ -133,11 +126,11 @@ export default function Home() {
         toast({
             variant: 'destructive',
             title: 'Recording format not supported',
-            description: 'No supported audio format found on your browser.',
+            description: 'No supported audio format found for your browser.',
         });
         return;
       }
-
+      
       const mediaRecorder = new MediaRecorder(stream, { mimeType: supportedMimeType });
       mediaRecorderRef.current = mediaRecorder;
 
@@ -147,50 +140,18 @@ export default function Home() {
         }
       };
 
-      mediaRecorder.onstop = async () => {
+      mediaRecorder.onstop = () => {
         const mimeType = mediaRecorderRef.current?.mimeType || 'audio/webm';
         const audioBlob = new Blob(audioChunksRef.current, { type: mimeType });
         const audioUrl = URL.createObjectURL(audioBlob);
         setRecordedAudioUrl(audioUrl);
-        
-        setIsTranscribing(true);
-        setSourceText('Transcribing audio...');
-
-        try {
-          // Convert blob to base64 data URI
-          const reader = new FileReader();
-          reader.readAsDataURL(audioBlob);
-          reader.onloadend = async () => {
-            const base64Audio = reader.result as string;
-            const transcriptionResult = await transcribeAudio(base64Audio);
-            if (transcriptionResult) {
-              setSourceText(transcriptionResult);
-            } else {
-              setSourceText('');
-              toast({
-                variant: 'destructive',
-                title: 'Transcription Failed',
-                description: 'Could not transcribe the audio.',
-              });
-            }
-            setIsTranscribing(false);
-          };
-        } catch (error) {
-          console.error('Transcription error:', error);
-          setSourceText('');
-          toast({
-            variant: 'destructive',
-            title: 'Transcription Error',
-            description: 'An error occurred during transcription.',
-          });
-          setIsTranscribing(false);
-        }
-
         audioChunksRef.current = [];
-        if(audioStreamRef.current) {
+        
+        if (audioStreamRef.current) {
           audioStreamRef.current.getTracks().forEach(track => track.stop());
           audioStreamRef.current = null;
         }
+        setIsRecording(false);
       };
       
       mediaRecorder.start();
@@ -204,18 +165,18 @@ export default function Home() {
         description: 'Please allow microphone access in your browser settings.',
       });
     }
-  }, [hasMediaRecorder, toast]);
-
-  const handleMicClick = async () => {
+  }, [hasMediaRecorder, toast, recordedAudioUrl]);
+  
+  const handleMicClick = () => {
     if (isRecording) {
-      await handleStopRecording();
+      handleStopRecording();
     } else {
-      await handleStartRecording();
+      handleStartRecording();
     }
   };
   
   const handleSwapLanguages = () => {
-    if(isTranslating || isTranscribing) return;
+    if(isTranslating) return;
     setSourceLang(targetLang);
     setTargetLang(sourceLang);
     setSourceText(translatedText);
@@ -231,18 +192,6 @@ export default function Home() {
     utterance.onend = () => setIsSpeaking(false);
     utterance.onerror = () => setIsSpeaking(false);
     speechSynthesis.speak(utterance);
-  };
-  
-  const handlePlayRecording = () => {
-    if (!recordedAudioUrl) return;
-    if (audioPlaybackRef.current) {
-      if (audioPlaybackRef.current.paused) {
-        audioPlaybackRef.current.play();
-      } else {
-        audioPlaybackRef.current.pause();
-        audioPlaybackRef.current.currentTime = 0;
-      }
-    }
   };
 
   const handleCopy = () => {
@@ -273,32 +222,12 @@ export default function Home() {
     setIsAnswering(false);
   };
   
-  useEffect(() => {
-    if (recordedAudioUrl) {
-      const audio = new Audio(recordedAudioUrl);
-      audio.onplay = () => setIsPlayingRecording(true);
-      audio.onpause = () => setIsPlayingRecording(false);
-      audio.onended = () => setIsPlayingRecording(false);
-      audio.onerror = (e) => { console.error("Audio playback error:", e); setIsPlayingRecording(false); };
-      audioPlaybackRef.current = audio;
-    }
-    return () => {
-      if (audioPlaybackRef.current) {
-        audioPlaybackRef.current.pause();
-        audioPlaybackRef.current = null;
-      }
-      if (recordedAudioUrl) {
-        URL.revokeObjectURL(recordedAudioUrl);
-      }
-    }
-  }, [recordedAudioUrl]);
-
-  const isUIBlocked = isTranslating || isRecording || isTranscribing;
+  const isUIBlocked = isTranslating || isRecording;
 
   return (
     <TooltipProvider>
-      <main className="flex min-h-screen w-full flex-col items-center justify-center bg-background p-4 sm:p-6 lg:p-8">
-        <div className="flex flex-col items-center text-center mb-8">
+      <main className="flex min-h-screen w-full flex-col items-center gap-6 bg-background p-4 sm:p-6 lg:p-8">
+        <div className="flex flex-col items-center text-center">
           <Logo />
           <h1 className="text-4xl sm:text-5xl font-bold font-headline mt-4">AccuAI</h1>
           <p className="text-muted-foreground mt-2">Your AI-Powered Speech Translator</p>
@@ -340,40 +269,18 @@ export default function Home() {
           <CardContent className="grid md:grid-cols-2 gap-6">
             <div className="flex flex-col gap-4">
               <Textarea
-                placeholder={isTranscribing ? "Transcribing audio..." : "Type or speak..."}
+                placeholder="Type text to translate..."
                 value={sourceText}
                 onChange={(e) => setSourceText(e.target.value)}
                 className="min-h-[200px] text-base resize-none"
                 disabled={isUIBlocked}
               />
-              <div className="flex items-center justify-between gap-2">
-                <div className="flex items-center gap-2">
-                   <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button size="icon" onClick={handleMicClick} disabled={!hasMediaRecorder || isTranslating || isTranscribing || hasMicPermission === false}>
-                        {isRecording ? <Pause className="h-5 w-5 text-red-500" /> : <Mic className="h-5 w-5" />}
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p>{hasMicPermission === false ? 'Microphone access denied' : !hasMediaRecorder ? 'Audio recording not supported' : isRecording ? 'Stop recording' : 'Start recording'}</p>
-                    </TooltipContent>
-                  </Tooltip>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button size="icon" variant="outline" onClick={handlePlayRecording} disabled={!recordedAudioUrl || isRecording}>
-                        {isPlayingRecording ? <Pause className="h-5 w-5" /> : <Play className="h-5 w-5" />}
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p>{!recordedAudioUrl ? "No recording to play" : isPlayingRecording ? "Pause playback" : "Play recording"}</p>
-                    </TooltipContent>
-                  </Tooltip>
-                </div>
+              <div className="flex items-center justify-end gap-2">
                 <Button onClick={handleTranslate} disabled={!sourceText.trim() || isUIBlocked}>
-                  {isTranslating || isTranscribing ? (
+                  {isTranslating ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      {isTranscribing ? 'Transcribing...' : 'Translating...'}
+                      Translating...
                     </>
                   ) : (
                     'Translate'
@@ -431,8 +338,42 @@ export default function Home() {
           </CardContent>
         </Card>
 
+        <Card className="w-full max-w-4xl shadow-2xl">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Mic className="h-6 w-6 text-primary" />
+              Voice Recorder
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="flex flex-col items-center gap-4">
+            <Button
+              onClick={handleMicClick}
+              disabled={hasMicPermission === false || !hasMediaRecorder}
+              className="w-24"
+            >
+              {isRecording ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Stop
+                </>
+              ) : (
+                'Record'
+              )}
+            </Button>
+            {hasMicPermission === false && (
+              <p className="text-sm text-destructive">Microphone access denied. Please enable it in your browser settings.</p>
+            )}
+            {recordedAudioUrl && (
+              <div className="w-full pt-4">
+                <p className="text-sm font-medium mb-2">Your Recording:</p>
+                <audio src={recordedAudioUrl} controls className="w-full" />
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
         {translatedText && (
-          <Card className="w-full max-w-4xl shadow-2xl mt-6">
+          <Card className="w-full max-w-4xl shadow-2xl">
             <CardHeader>
               <div className="flex items-center gap-2">
                 <HelpCircle className="h-6 w-6 text-primary" />
