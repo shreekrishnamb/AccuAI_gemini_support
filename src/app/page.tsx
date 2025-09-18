@@ -54,11 +54,13 @@ export default function Home() {
   const [answer, setAnswer] = useState('');
   const [isAnswering, setIsAnswering] = useState(false);
   const [hasMicPermission, setHasMicPermission] = useState<boolean | null>(null);
+  const [isPlayingRecording, setIsPlayingRecording] = useState(false);
 
   const { toast } = useToast();
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const audioStreamRef = useRef<MediaStream | null>(null);
+  const audioPlaybackRef = useRef<HTMLAudioElement | null>(null);
 
   useEffect(() => {
     setIsClient(true);
@@ -111,18 +113,16 @@ export default function Home() {
     audioChunksRef.current = [];
 
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: { channelCount: 2 } });
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
       audioStreamRef.current = stream;
       setHasMicPermission(true);
 
       const mimeTypes = [
         'audio/webm;codecs=opus',
         'audio/webm',
-        'audio/wav',
       ];
       const supportedMimeType = mimeTypes.find(type => MediaRecorder.isTypeSupported(type));
-
-      if (!supportedMimeType) {
+       if (!supportedMimeType) {
         toast({
             variant: 'destructive',
             title: 'Recording format not supported',
@@ -140,7 +140,7 @@ export default function Home() {
         }
       };
 
-      mediaRecorder.onstop = () => {
+      mediaRecorder.onstop = async () => {
         const mimeType = mediaRecorderRef.current?.mimeType || 'audio/webm';
         const audioBlob = new Blob(audioChunksRef.current, { type: mimeType });
         const audioUrl = URL.createObjectURL(audioBlob);
@@ -154,7 +154,7 @@ export default function Home() {
         setIsRecording(false);
       };
       
-      mediaRecorder.start();
+      mediaRecorder.start(100);
       setIsRecording(true);
     } catch (err) {
       console.error('Error accessing microphone:', err);
@@ -174,6 +174,33 @@ export default function Home() {
       handleStartRecording();
     }
   };
+
+  const handleTogglePlayRecording = () => {
+    if (!audioPlaybackRef.current) return;
+    if (isPlayingRecording) {
+      audioPlaybackRef.current.pause();
+    } else {
+      audioPlaybackRef.current.play();
+    }
+  };
+
+  useEffect(() => {
+    if (recordedAudioUrl) {
+      const audio = new Audio(recordedAudioUrl);
+      audio.onplay = () => setIsPlayingRecording(true);
+      audio.onpause = () => setIsPlayingRecording(false);
+      audio.onended = () => setIsPlayingRecording(false);
+      audio.onerror = (e) => { console.error("Audio playback error:", e); setIsPlayingRecording(false); };
+      audioPlaybackRef.current = audio;
+    }
+    return () => {
+      if (audioPlaybackRef.current) {
+        audioPlaybackRef.current.pause();
+        audioPlaybackRef.current = null;
+      }
+    };
+  }, [recordedAudioUrl]);
+
   
   const handleSwapLanguages = () => {
     if(isTranslating) return;
@@ -267,15 +294,18 @@ export default function Home() {
             </div>
           </CardHeader>
           <CardContent className="grid md:grid-cols-2 gap-6">
-            <div className="flex flex-col gap-4">
+            <div className="relative flex flex-col gap-4">
               <Textarea
-                placeholder="Type text to translate..."
+                placeholder="Type text to translate or use the microphone..."
                 value={sourceText}
                 onChange={(e) => setSourceText(e.target.value)}
                 className="min-h-[200px] text-base resize-none"
                 disabled={isUIBlocked}
               />
-              <div className="flex items-center justify-end gap-2">
+              <div className="flex items-center justify-between gap-2">
+                 <Button onClick={handleMicClick} size="icon" variant={isRecording ? 'destructive' : 'outline'} disabled={hasMicPermission === false || !hasMediaRecorder || isUIBlocked}>
+                  <Mic className="h-5 w-5" />
+                </Button>
                 <Button onClick={handleTranslate} disabled={!sourceText.trim() || isUIBlocked}>
                   {isTranslating ? (
                     <>
@@ -364,9 +394,11 @@ export default function Home() {
               <p className="text-sm text-destructive">Microphone access denied. Please enable it in your browser settings.</p>
             )}
             {recordedAudioUrl && (
-              <div className="w-full pt-4">
-                <p className="text-sm font-medium mb-2">Your Recording:</p>
-                <audio src={recordedAudioUrl} controls className="w-full" />
+              <div className="w-full pt-4 flex items-center gap-4">
+                 <Button onClick={handleTogglePlayRecording} size="icon" variant="outline">
+                    {isPlayingRecording ? <Pause className="h-5 w-5" /> : <Play className="h-5 w-5" />}
+                  </Button>
+                <audio src={recordedAudioUrl} ref={audioPlaybackRef} className="w-full" controls/>
               </div>
             )}
           </CardContent>
