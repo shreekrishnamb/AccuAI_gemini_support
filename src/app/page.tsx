@@ -15,9 +15,7 @@ import { Button } from '@/components/ui/button';
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
-  CardTitle,
 } from '@/components/ui/card';
 import {
   Select,
@@ -49,9 +47,15 @@ export default function Home() {
   const [isTranslating, setIsTranslating] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [isClient, setIsClient] = useState(false);
+  const [recordedAudioUrl, setRecordedAudioUrl] = useState<string | null>(null);
+  const [isPlayingRecording, setIsPlayingRecording] = useState(false);
 
   const { toast } = useToast();
   const speechRecognitionRef = useRef<SpeechRecognition | null>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
+  const audioPlaybackRef = useRef<HTMLAudioElement | null>(null);
+
 
   useEffect(() => {
     setIsClient(true);
@@ -60,57 +64,88 @@ export default function Home() {
   const canShare = isClient && typeof navigator !== 'undefined' && !!navigator.share;
   const hasSpeechRecognition = isClient && ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window);
   const hasSpeechSynthesis = isClient && 'speechSynthesis' in window;
+  const hasMediaRecorder = isClient && 'MediaRecorder' in window;
 
-  useEffect(() => {
-    if (!hasSpeechRecognition) return;
+  const initializeMedia = useCallback(async () => {
+    if (!hasSpeechRecognition || !hasMediaRecorder) return null;
 
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    const recognition = new SpeechRecognition();
-    recognition.continuous = true;
-    recognition.interimResults = true;
-    recognition.lang = sourceLang;
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
 
-    recognition.onresult = (event: any) => {
-      let interimTranscript = '';
-      let finalTranscript = '';
-      for (let i = event.resultIndex; i < event.results.length; ++i) {
-        if (event.results[i].isFinal) {
-          finalTranscript += event.results[i][0].transcript;
-        } else {
-          interimTranscript += event.results[i][0].transcript;
+      // Speech Recognition setup
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      const recognition = new SpeechRecognition();
+      recognition.continuous = true;
+      recognition.interimResults = true;
+      recognition.lang = sourceLang;
+
+      recognition.onresult = (event: any) => {
+        let interimTranscript = '';
+        let finalTranscript = '';
+        for (let i = event.resultIndex; i < event.results.length; ++i) {
+          if (event.results[i].isFinal) {
+            finalTranscript += event.results[i][0].transcript;
+          } else {
+            interimTranscript += event.results[i][0].transcript;
+          }
         }
-      }
-      setSourceText(finalTranscript + interimTranscript);
-    };
+        setSourceText(finalTranscript + interimTranscript);
+      };
 
-    recognition.onend = async () => {
-      setIsRecording(false);
-      // The final transcript is processed in the debounced useEffect
-    };
-
-    recognition.onerror = (event: any) => {
-      // Ignore 'no-speech' errors, which are common
-      if (event.error === 'no-speech') {
+      recognition.onend = () => {
         setIsRecording(false);
-        return;
-      }
+        mediaRecorderRef.current?.stop();
+      };
 
-      console.error('Speech recognition error:', event.error);
+      recognition.onerror = (event: any) => {
+        if (event.error === 'no-speech') {
+          setIsRecording(false);
+          mediaRecorderRef.current?.stop();
+          return;
+        }
+        console.error('Speech recognition error:', event.error);
+        toast({
+          variant: 'destructive',
+          title: 'Speech Recognition Error',
+          description: event.error,
+        });
+        setIsRecording(false);
+        mediaRecorderRef.current?.stop();
+      };
+      speechRecognitionRef.current = recognition;
+
+      // Media Recorder setup
+      const mediaRecorder = new MediaRecorder(stream);
+      mediaRecorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          audioChunksRef.current.push(event.data);
+        }
+      };
+
+      mediaRecorder.onstop = () => {
+        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+        const audioUrl = URL.createObjectURL(audioBlob);
+        setRecordedAudioUrl(audioUrl);
+      };
+      mediaRecorderRef.current = mediaRecorder;
+      
+      return true;
+
+    } catch (err) {
+      console.error('Error accessing microphone:', err);
       toast({
         variant: 'destructive',
-        title: 'Speech Recognition Error',
-        description: event.error,
+        title: 'Microphone Access Denied',
+        description: 'Please allow microphone access in your browser settings.',
       });
-      setIsRecording(false);
-    };
-
-    speechRecognitionRef.current = recognition;
-  }, [hasSpeechRecognition, sourceLang, toast]);
-
+      return false;
+    }
+  }, [hasSpeechRecognition, hasMediaRecorder, sourceLang, toast]);
 
   const handleTranslate = useCallback(async () => {
     if (!sourceText.trim()) return;
     setIsTranslating(true);
+    setTranslatedText('');
     const detected = await detectLanguage(sourceText);
     if (detected && languages.some(l => l.value.startsWith(detected))) {
       setSourceLang(detected);
@@ -120,32 +155,32 @@ export default function Home() {
     setIsTranslating(false);
   }, [sourceText, sourceLang, targetLang]);
 
-  useEffect(() => {
-    const debounceTimeout = setTimeout(() => {
-      if (sourceText.trim() && !isRecording) {
-        handleTranslate();
-      }
-    }, 1000);
 
-    return () => clearTimeout(debounceTimeout);
-  }, [sourceText, isRecording, handleTranslate]);
-
-  const handleMicClick = () => {
+  const handleMicClick = async () => {
     if (isRecording) {
       speechRecognitionRef.current?.stop();
+      // MediaRecorder is stopped in recognition.onend
     } else {
+      const mediaInitialized = await initializeMedia();
+      if (!mediaInitialized) return;
+
       setSourceText('');
       setTranslatedText('');
+      setRecordedAudioUrl(null);
+      audioChunksRef.current = [];
+
       speechRecognitionRef.current?.start();
+      mediaRecorderRef.current?.start();
+      setIsRecording(true);
     }
-    setIsRecording(!isRecording);
   };
   
   const handleSwapLanguages = () => {
+    if(isTranslating) return;
     setSourceLang(targetLang);
     setTargetLang(sourceLang);
     setSourceText(translatedText);
-    setTranslatedText(sourceText);
+    setTranslatedText(''); // Clear translation to avoid confusion
   };
 
   const handleSpeak = () => {
@@ -158,6 +193,13 @@ export default function Home() {
     utterance.onend = () => setIsSpeaking(false);
     utterance.onerror = () => setIsSpeaking(false);
     speechSynthesis.speak(utterance);
+  };
+  
+  const handlePlayRecording = () => {
+    if (!recordedAudioUrl || isPlayingRecording) return;
+    if (audioPlaybackRef.current) {
+      audioPlaybackRef.current.play();
+    }
   };
 
   const handleCopy = () => {
@@ -178,6 +220,21 @@ export default function Home() {
       }
     }
   };
+  
+  useEffect(() => {
+    if (recordedAudioUrl) {
+      const audio = new Audio(recordedAudioUrl);
+      audio.onplay = () => setIsPlayingRecording(true);
+      audio.onpause = () => setIsPlayingRecording(false);
+      audio.onended = () => setIsPlayingRecording(false);
+      audioPlaybackRef.current = audio;
+    }
+    return () => {
+      if (recordedAudioUrl) {
+        URL.revokeObjectURL(recordedAudioUrl);
+      }
+    }
+  }, [recordedAudioUrl]);
 
   return (
     <TooltipProvider>
@@ -221,8 +278,8 @@ export default function Home() {
               </Select>
             </div>
           </CardHeader>
-          <CardContent className="grid md:grid-cols-2 gap-4 sm:gap-6">
-            <div className="space-y-2">
+          <CardContent className="grid md:grid-cols-2 gap-6">
+            <div className="flex flex-col gap-4">
               <Textarea
                 placeholder="Type or speak..."
                 value={sourceText}
@@ -230,28 +287,49 @@ export default function Home() {
                 className="min-h-[200px] text-base resize-none"
                 disabled={isTranslating || isRecording}
               />
-              <div className="flex items-center justify-between">
-                <span className="text-xs text-muted-foreground">{sourceText.length} / 5000</span>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button size="icon" onClick={handleMicClick} disabled={!hasSpeechRecognition || isTranslating}>
-                      {isRecording ? <Loader2 className="h-5 w-5 animate-spin" /> : <Mic className="h-5 w-5" />}
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>{!hasSpeechRecognition ? 'Speech recognition not supported' : isRecording ? 'Stop recording' : 'Start recording'}</p>
-                  </TooltipContent>
-                </Tooltip>
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                   <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button size="icon" onClick={handleMicClick} disabled={!hasSpeechRecognition || isTranslating}>
+                        {isRecording ? <Loader2 className="h-5 w-5 animate-spin" /> : <Mic className="h-5 w-5" />}
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>{!hasSpeechRecognition ? 'Speech recognition not supported' : isRecording ? 'Stop recording' : 'Start recording'}</p>
+                    </TooltipContent>
+                  </Tooltip>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button size="icon" variant="outline" onClick={handlePlayRecording} disabled={!recordedAudioUrl || isPlayingRecording || isRecording}>
+                        <Play className="h-5 w-5" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>{!recordedAudioUrl ? "No recording to play" : "Play recording"}</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </div>
+                <Button onClick={handleTranslate} disabled={!sourceText.trim() || isTranslating || isRecording}>
+                  {isTranslating ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Translating...
+                    </>
+                  ) : (
+                    'Translate'
+                  )}
+                </Button>
               </div>
             </div>
-            <div className="relative space-y-2">
+            <div className="relative flex flex-col gap-4">
               <Textarea
                 placeholder="Translation"
                 value={translatedText}
                 readOnly
                 className="min-h-[200px] text-base resize-none bg-muted/50"
               />
-              {isTranslating && (
+              {isTranslating && !translatedText && (
                 <div className="absolute inset-0 flex items-center justify-center bg-background/80 rounded-md">
                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
                 </div>
