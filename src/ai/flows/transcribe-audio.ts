@@ -39,7 +39,7 @@ const transcribeAudioFlow = ai.defineFlow(
       
       console.log('Sending to Gemini for transcription...');
       const {text} = await ai.generate({
-          model: 'gemini-1.5-flash-latest',
+          model: 'googleai/gemini-1.5-flash-latest',
           prompt: [
               {text: 'Transcribe the following audio:'},
               {media: {url: input.audio, contentType: mimeType}}
