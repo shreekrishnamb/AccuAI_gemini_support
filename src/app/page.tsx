@@ -111,10 +111,7 @@ export default function Home() {
       recognition.onend = () => {
         console.log("Speech recognition ended.");
         setIsRecording(false);
-        if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
-            console.log("Stopping media recorder from onend.");
-            mediaRecorderRef.current.stop();
-        }
+        // We should not stop media recorder here, only when user clicks stop
       };
 
       recognition.onerror = (event: any) => {
@@ -127,10 +124,7 @@ export default function Home() {
           });
         }
         setIsRecording(false);
-         if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
-            console.log("Stopping media recorder from onerror.");
-            mediaRecorderRef.current.stop();
-        }
+        // We should not stop media recorder here, as it might be a transient error.
       };
       speechRecognitionRef.current = recognition;
 
@@ -190,7 +184,13 @@ export default function Home() {
   const handleMicClick = async () => {
     if (isRecording) {
       console.log("Stopping recording...");
-      speechRecognitionRef.current?.stop();
+      if (speechRecognitionRef.current) {
+        speechRecognitionRef.current.stop();
+      }
+      if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
+        mediaRecorderRef.current.stop();
+      }
+      setIsRecording(false);
     } else {
       if(hasMicPermission === false){
         console.log("Mic permission not granted. Re-initializing media.");
@@ -207,9 +207,17 @@ export default function Home() {
         speechRecognitionRef.current.lang = sourceLang;
         console.log("Set speech recognition language to:", sourceLang);
       }
-
-      speechRecognitionRef.current?.start();
-      mediaRecorderRef.current?.start();
+      
+      if (mediaRecorderRef.current?.state === 'inactive') {
+        mediaRecorderRef.current?.start();
+      }
+      if (speechRecognitionRef.current) {
+        try {
+          speechRecognitionRef.current.start();
+        } catch(e) {
+            console.error("Could not start speech recognition: ", e);
+        }
+      }
       setIsRecording(true);
     }
   };
@@ -239,7 +247,11 @@ export default function Home() {
     if (!recordedAudioUrl || isPlayingRecording) return;
     console.log("Playing recording from URL:", recordedAudioUrl);
     if (audioPlaybackRef.current) {
-      audioPlaybackRef.current.play();
+      if (audioPlaybackRef.current.paused) {
+        audioPlaybackRef.current.play();
+      } else {
+        audioPlaybackRef.current.pause();
+      }
     }
   };
 
@@ -358,7 +370,7 @@ export default function Home() {
                   </Tooltip>
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <Button size="icon" variant="outline" onClick={handlePlayRecording} disabled={!recordedAudioUrl || isPlayingRecording || isRecording}>
+                      <Button size="icon" variant="outline" onClick={handlePlayRecording} disabled={!recordedAudioUrl || isRecording}>
                         {isPlayingRecording ? <Pause className="h-5 w-5" /> : <Play className="h-5 w-5" />}
                       </Button>
                     </TooltipTrigger>
