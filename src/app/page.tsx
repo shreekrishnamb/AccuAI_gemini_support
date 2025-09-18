@@ -65,6 +65,7 @@ export default function Home() {
 
 
   useEffect(() => {
+    console.log("Component mounted");
     setIsClient(true);
   }, []);
 
@@ -74,10 +75,16 @@ export default function Home() {
   const hasMediaRecorder = isClient && 'MediaRecorder' in window;
 
   const initializeMedia = useCallback(async () => {
-    if (!hasSpeechRecognition || !hasMediaRecorder) return;
+    console.log("Attempting to initialize media...");
+    if (!hasSpeechRecognition || !hasMediaRecorder) {
+        console.log("Speech recognition or MediaRecorder not supported.");
+        return;
+    }
 
     try {
+      console.log("Requesting microphone permission...");
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      console.log("Microphone permission granted.");
       setHasMicPermission(true);
 
       const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -85,6 +92,7 @@ export default function Home() {
       recognition.continuous = true;
       recognition.interimResults = true;
       recognition.lang = sourceLang;
+      console.log("SpeechRecognition initialized with lang:", sourceLang);
 
       recognition.onresult = (event: any) => {
         let interimTranscript = '';
@@ -96,19 +104,22 @@ export default function Home() {
             interimTranscript += event.results[i][0].transcript;
           }
         }
+        console.log("Speech recognition result:", { finalTranscript, interimTranscript });
         setSourceText(finalTranscript + interimTranscript);
       };
 
       recognition.onend = () => {
+        console.log("Speech recognition ended.");
         setIsRecording(false);
         if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
+            console.log("Stopping media recorder from onend.");
             mediaRecorderRef.current.stop();
         }
       };
 
       recognition.onerror = (event: any) => {
+        console.error('Speech recognition error:', event.error);
         if (event.error !== 'no-speech') {
-          console.error('Speech recognition error:', event.error);
           toast({
             variant: 'destructive',
             title: 'Speech Recognition Error',
@@ -117,6 +128,7 @@ export default function Home() {
         }
         setIsRecording(false);
          if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
+            console.log("Stopping media recorder from onerror.");
             mediaRecorderRef.current.stop();
         }
       };
@@ -125,16 +137,20 @@ export default function Home() {
       const mediaRecorder = new MediaRecorder(stream);
       mediaRecorder.ondataavailable = (event) => {
         if (event.data.size > 0) {
+          console.log("MediaRecorder data available, chunk size:", event.data.size);
           audioChunksRef.current.push(event.data);
         }
       };
 
       mediaRecorder.onstop = () => {
+        console.log("MediaRecorder stopped.");
         const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
         const audioUrl = URL.createObjectURL(audioBlob);
+        console.log("Created audio URL:", audioUrl, "from blob size:", audioBlob.size);
         setRecordedAudioUrl(audioUrl);
       };
       mediaRecorderRef.current = mediaRecorder;
+      console.log("MediaRecorder initialized.");
       
     } catch (err) {
       console.error('Error accessing microphone:', err);
@@ -154,13 +170,18 @@ export default function Home() {
 
   const handleTranslate = useCallback(async () => {
     if (!sourceText.trim()) return;
+    console.log("Translate button clicked.");
     setIsTranslating(true);
     setTranslatedText('');
+    console.log("Detecting language for:", sourceText);
     const detected = await detectLanguage(sourceText);
+    console.log("Detected language:", detected);
     if (detected && languages.some(l => l.value.startsWith(detected))) {
       setSourceLang(detected);
     }
+    console.log("Translating text from", detected || sourceLang, "to", targetLang);
     const translation = await translateText(sourceText, detected || sourceLang, targetLang);
+    console.log("Translation result:", translation);
     setTranslatedText(translation);
     setIsTranslating(false);
   }, [sourceText, sourceLang, targetLang]);
@@ -168,16 +189,24 @@ export default function Home() {
 
   const handleMicClick = async () => {
     if (isRecording) {
+      console.log("Stopping recording...");
       speechRecognitionRef.current?.stop();
     } else {
       if(hasMicPermission === false){
+        console.log("Mic permission not granted. Re-initializing media.");
         initializeMedia();
         return;
       }
+      console.log("Starting recording...");
       setSourceText('');
       setTranslatedText('');
       setRecordedAudioUrl(null);
       audioChunksRef.current = [];
+      
+      if(speechRecognitionRef.current) {
+        speechRecognitionRef.current.lang = sourceLang;
+        console.log("Set speech recognition language to:", sourceLang);
+      }
 
       speechRecognitionRef.current?.start();
       mediaRecorderRef.current?.start();
@@ -187,6 +216,7 @@ export default function Home() {
   
   const handleSwapLanguages = () => {
     if(isTranslating) return;
+    console.log("Swapping languages.");
     setSourceLang(targetLang);
     setTargetLang(sourceLang);
     setSourceText(translatedText);
@@ -195,18 +225,19 @@ export default function Home() {
 
   const handleSpeak = () => {
     if (!hasSpeechSynthesis || !translatedText.trim() || isSpeaking) return;
-
+    console.log("Speaking translation...");
     speechSynthesis.cancel();
     const utterance = new SpeechSynthesisUtterance(translatedText);
     utterance.lang = targetLang;
     utterance.onstart = () => setIsSpeaking(true);
-    utterance.onend = () => setIsSpeaking(false);
-    utterance.onerror = () => setIsSpeaking(false);
+    utterance.onend = () => { console.log("Speaking finished."); setIsSpeaking(false); };
+    utterance.onerror = () => { console.error("Speech synthesis error."); setIsSpeaking(false); };
     speechSynthesis.speak(utterance);
   };
   
   const handlePlayRecording = () => {
     if (!recordedAudioUrl || isPlayingRecording) return;
+    console.log("Playing recording from URL:", recordedAudioUrl);
     if (audioPlaybackRef.current) {
       audioPlaybackRef.current.play();
     }
@@ -214,12 +245,14 @@ export default function Home() {
 
   const handleCopy = () => {
     if (!translatedText) return;
+    console.log("Copying translation to clipboard.");
     navigator.clipboard.writeText(translatedText);
     toast({ title: 'Copied to clipboard!' });
   };
 
   const handleShare = async () => {
     if (canShare && translatedText) {
+      console.log("Sharing translation.");
       try {
         await navigator.share({
           title: 'AccuAI Translation',
@@ -233,23 +266,28 @@ export default function Home() {
 
   const handleAskQuestion = async () => {
     if (!question.trim() || !translatedText.trim()) return;
+    console.log("Asking question:", question);
     setIsAnswering(true);
     setAnswer('');
     const result = await answerQuestion(translatedText, question);
+    console.log("Answer received:", result);
     setAnswer(result);
     setIsAnswering(false);
   };
   
   useEffect(() => {
     if (recordedAudioUrl) {
+      console.log("New recorded audio URL available. Creating Audio object.");
       const audio = new Audio(recordedAudioUrl);
-      audio.onplay = () => setIsPlayingRecording(true);
-      audio.onpause = () => setIsPlayingRecording(false);
-      audio.onended = () => setIsPlayingRecording(false);
+      audio.onplay = () => { console.log("Audio playback started."); setIsPlayingRecording(true); };
+      audio.onpause = () => { console.log("Audio playback paused."); setIsPlayingRecording(false); };
+      audio.onended = () => { console.log("Audio playback ended."); setIsPlayingRecording(false); };
+      audio.onerror = (e) => { console.error("Audio playback error:", e); setIsPlayingRecording(false); };
       audioPlaybackRef.current = audio;
     }
     return () => {
       if (recordedAudioUrl) {
+        console.log("Revoking audio URL:", recordedAudioUrl);
         URL.revokeObjectURL(recordedAudioUrl);
       }
     }
@@ -266,7 +304,7 @@ export default function Home() {
         <Card className="w-full max-w-4xl shadow-2xl">
           <CardHeader>
              <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-              <Select value={sourceLang} onValueChange={setSourceLang} disabled={isTranslating || isRecording}>
+              <Select value={sourceLang} onValueChange={(value) => { console.log("Source language changed to:", value); setSourceLang(value);}} disabled={isTranslating || isRecording}>
                 <SelectTrigger className="w-full sm:w-[180px]">
                   <SelectValue placeholder="Source language" />
                 </SelectTrigger>
@@ -283,7 +321,7 @@ export default function Home() {
                 <ArrowRightLeft className="h-5 w-5" />
               </Button>
 
-              <Select value={targetLang} onValueChange={setTargetLang} disabled={isTranslating || isRecording}>
+              <Select value={targetLang} onValueChange={(value) => { console.log("Target language changed to:", value); setTargetLang(value);}} disabled={isTranslating || isRecording}>
                 <SelectTrigger className="w-full sm:w-[180px]">
                   <SelectValue placeholder="Target language" />
                 </SelectTrigger>
