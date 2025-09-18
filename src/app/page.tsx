@@ -62,11 +62,23 @@ export default function Home() {
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const audioPlaybackRef = useRef<HTMLAudioElement | null>(null);
+  const audioStreamRef = useRef<MediaStream | null>(null);
 
 
   useEffect(() => {
     console.log("Component mounted");
     setIsClient(true);
+    // Check for microphone permission on initial load
+    navigator.mediaDevices.getUserMedia({ audio: true })
+      .then(stream => {
+        setHasMicPermission(true);
+        audioStreamRef.current = stream;
+        // Stop tracks to release microphone
+        stream.getTracks().forEach(track => track.stop());
+      })
+      .catch(() => {
+        setHasMicPermission(false);
+      });
   }, []);
 
   const canShare = isClient && typeof navigator !== 'undefined' && !!navigator.share;
@@ -78,12 +90,13 @@ export default function Home() {
     console.log("Attempting to initialize media...");
     if (!hasSpeechRecognition || !hasMediaRecorder) {
         console.log("Speech recognition or MediaRecorder not supported.");
-        return;
+        return false;
     }
 
     try {
       console.log("Requesting microphone permission...");
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      audioStreamRef.current = stream;
       console.log("Microphone permission granted.");
       setHasMicPermission(true);
 
@@ -110,12 +123,6 @@ export default function Home() {
 
       recognition.onend = () => {
         console.log("Speech recognition ended.");
-        if (isRecording) {
-            setIsRecording(false);
-        }
-        if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
-            mediaRecorderRef.current.stop();
-        }
       };
 
       recognition.onerror = (event: any) => {
@@ -127,17 +134,12 @@ export default function Home() {
             description: event.error,
           });
         }
-        // Don't stop recording on "no-speech"
-        if (event.error !== 'no-speech' && isRecording) {
-            setIsRecording(false);
-            if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
-                mediaRecorderRef.current.stop();
-            }
-        }
       };
       speechRecognitionRef.current = recognition;
 
       const mediaRecorder = new MediaRecorder(stream);
+      mediaRecorderRef.current = mediaRecorder;
+
       mediaRecorder.ondataavailable = (event) => {
         if (event.data.size > 0) {
           console.log("MediaRecorder data available, chunk size:", event.data.size);
@@ -156,8 +158,9 @@ export default function Home() {
             console.log("No audio chunks to create a recording from.");
         }
       };
-      mediaRecorderRef.current = mediaRecorder;
+
       console.log("MediaRecorder initialized.");
+      return true;
       
     } catch (err) {
       console.error('Error accessing microphone:', err);
@@ -167,15 +170,9 @@ export default function Home() {
         title: 'Microphone Access Denied',
         description: 'Please allow microphone access in your browser settings.',
       });
+      return false;
     }
-  }, [hasSpeechRecognition, hasMediaRecorder, sourceLang, toast, isRecording]);
-
-  useEffect(() => {
-    if(!speechRecognitionRef.current && !mediaRecorderRef.current) {
-        initializeMedia();
-    }
-  }, [initializeMedia]);
-
+  }, [hasSpeechRecognition, hasMediaRecorder, sourceLang, toast]);
 
   const handleTranslate = useCallback(async () => {
     if (!sourceText.trim()) return;
@@ -205,38 +202,24 @@ export default function Home() {
       if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
         mediaRecorderRef.current.stop();
       }
+      if(audioStreamRef.current) {
+        audioStreamRef.current.getTracks().forEach(track => track.stop());
+      }
       setIsRecording(false);
     } else {
-      if(hasMicPermission === false){
-        console.log("Mic permission not granted. Re-initializing media.");
-        initializeMedia();
-        return;
-      }
-      
-      if (!speechRecognitionRef.current || !mediaRecorderRef.current) {
-        await initializeMedia();
-        // Add a small delay to ensure media is initialized before starting
-        setTimeout(() => handleMicClick(), 500);
-        return;
-      }
-      
       console.log("Starting recording...");
       setSourceText('');
       setTranslatedText('');
       setRecordedAudioUrl(null);
       audioChunksRef.current = [];
       
-      if(speechRecognitionRef.current) {
-        speechRecognitionRef.current.lang = sourceLang;
-        console.log("Set speech recognition language to:", sourceLang);
-      }
-      
-      if (mediaRecorderRef.current?.state === 'inactive') {
-        mediaRecorderRef.current?.start();
-      }
-      if (speechRecognitionRef.current) {
+      const mediaInitialized = await initializeMedia();
+
+      if (mediaInitialized && mediaRecorderRef.current && speechRecognitionRef.current) {
+        mediaRecorderRef.current.start();
         try {
           speechRecognitionRef.current.start();
+          setIsRecording(true);
         } catch(e) {
             console.error("Could not start speech recognition: ", e);
             // If speech recognition fails to start, stop the media recorder as well.
@@ -244,10 +227,8 @@ export default function Home() {
               mediaRecorderRef.current.stop();
             }
             setIsRecording(false);
-            return;
         }
       }
-      setIsRecording(true);
     }
   };
   
