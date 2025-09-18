@@ -110,7 +110,12 @@ export default function Home() {
 
       recognition.onend = () => {
         console.log("Speech recognition ended.");
-        setIsRecording(false);
+        if (isRecording) {
+            setIsRecording(false);
+        }
+        if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
+            mediaRecorderRef.current.stop();
+        }
       };
 
       recognition.onerror = (event: any) => {
@@ -122,7 +127,13 @@ export default function Home() {
             description: event.error,
           });
         }
-        setIsRecording(false);
+        // Don't stop recording on "no-speech"
+        if (event.error !== 'no-speech' && isRecording) {
+            setIsRecording(false);
+            if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
+                mediaRecorderRef.current.stop();
+            }
+        }
       };
       speechRecognitionRef.current = recognition;
 
@@ -136,10 +147,14 @@ export default function Home() {
 
       mediaRecorder.onstop = () => {
         console.log("MediaRecorder stopped.");
-        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
-        const audioUrl = URL.createObjectURL(audioBlob);
-        console.log("Created audio URL:", audioUrl, "from blob size:", audioBlob.size);
-        setRecordedAudioUrl(audioUrl);
+        if (audioChunksRef.current.length > 0) {
+            const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+            const audioUrl = URL.createObjectURL(audioBlob);
+            console.log("Created audio URL:", audioUrl, "from blob size:", audioBlob.size);
+            setRecordedAudioUrl(audioUrl);
+        } else {
+            console.log("No audio chunks to create a recording from.");
+        }
       };
       mediaRecorderRef.current = mediaRecorder;
       console.log("MediaRecorder initialized.");
@@ -153,10 +168,12 @@ export default function Home() {
         description: 'Please allow microphone access in your browser settings.',
       });
     }
-  }, [hasSpeechRecognition, hasMediaRecorder, sourceLang, toast]);
+  }, [hasSpeechRecognition, hasMediaRecorder, sourceLang, toast, isRecording]);
 
   useEffect(() => {
-    initializeMedia();
+    if(!speechRecognitionRef.current && !mediaRecorderRef.current) {
+        initializeMedia();
+    }
   }, [initializeMedia]);
 
 
@@ -195,6 +212,14 @@ export default function Home() {
         initializeMedia();
         return;
       }
+      
+      if (!speechRecognitionRef.current || !mediaRecorderRef.current) {
+        await initializeMedia();
+        // Add a small delay to ensure media is initialized before starting
+        setTimeout(() => handleMicClick(), 500);
+        return;
+      }
+      
       console.log("Starting recording...");
       setSourceText('');
       setTranslatedText('');
@@ -214,6 +239,12 @@ export default function Home() {
           speechRecognitionRef.current.start();
         } catch(e) {
             console.error("Could not start speech recognition: ", e);
+            // If speech recognition fails to start, stop the media recorder as well.
+            if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
+              mediaRecorderRef.current.stop();
+            }
+            setIsRecording(false);
+            return;
         }
       }
       setIsRecording(true);
