@@ -96,55 +96,10 @@ export default function Home() {
 
   const handleStopRecording = useCallback(async () => {
     if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
-      mediaRecorderRef.current.onstop = async () => {
-        const mimeType = mediaRecorderRef.current?.mimeType || 'audio/webm';
-        const audioBlob = new Blob(audioChunksRef.current, { type: mimeType });
-        const audioUrl = URL.createObjectURL(audioBlob);
-        setRecordedAudioUrl(audioUrl);
-        
-        setIsTranscribing(true);
-        setSourceText('Transcribing audio...');
-
-        try {
-          // Convert blob to base64 data URI
-          const reader = new FileReader();
-          reader.readAsDataURL(audioBlob);
-          reader.onloadend = async () => {
-            const base64Audio = reader.result as string;
-            const transcriptionResult = await transcribeAudio(base64Audio);
-            if (transcriptionResult) {
-              setSourceText(transcriptionResult);
-            } else {
-              setSourceText('');
-              toast({
-                variant: 'destructive',
-                title: 'Transcription Failed',
-                description: 'Could not transcribe the audio.',
-              });
-            }
-            setIsTranscribing(false);
-          };
-        } catch (error) {
-          console.error('Transcription error:', error);
-          setSourceText('');
-          toast({
-            variant: 'destructive',
-            title: 'Transcription Error',
-            description: 'An error occurred during transcription.',
-          });
-          setIsTranscribing(false);
-        }
-
-        audioChunksRef.current = [];
-        if(audioStreamRef.current) {
-          audioStreamRef.current.getTracks().forEach(track => track.stop());
-          audioStreamRef.current = null;
-        }
-      };
       mediaRecorderRef.current.stop();
     }
     setIsRecording(false);
-  }, [toast]);
+  }, []);
 
   const handleStartRecording = useCallback(async () => {
     if (!hasMediaRecorder) {
@@ -187,6 +142,52 @@ export default function Home() {
       mediaRecorder.ondataavailable = (event) => {
         if (event.data.size > 0) {
           audioChunksRef.current.push(event.data);
+        }
+      };
+
+      mediaRecorder.onstop = async () => {
+        const mimeType = mediaRecorderRef.current?.mimeType || 'audio/webm';
+        const audioBlob = new Blob(audioChunksRef.current, { type: mimeType });
+        const audioUrl = URL.createObjectURL(audioBlob);
+        setRecordedAudioUrl(audioUrl);
+        
+        setIsTranscribing(true);
+        setSourceText('Transcribing audio...');
+
+        try {
+          // Convert blob to base64 data URI
+          const reader = new FileReader();
+          reader.readAsDataURL(audioBlob);
+          reader.onloadend = async () => {
+            const base64Audio = reader.result as string;
+            const transcriptionResult = await transcribeAudio(base64Audio);
+            if (transcriptionResult) {
+              setSourceText(transcriptionResult);
+            } else {
+              setSourceText('');
+              toast({
+                variant: 'destructive',
+                title: 'Transcription Failed',
+                description: 'Could not transcribe the audio.',
+              });
+            }
+            setIsTranscribing(false);
+          };
+        } catch (error) {
+          console.error('Transcription error:', error);
+          setSourceText('');
+          toast({
+            variant: 'destructive',
+            title: 'Transcription Error',
+            description: 'An error occurred during transcription.',
+          });
+          setIsTranscribing(false);
+        }
+
+        audioChunksRef.current = [];
+        if(audioStreamRef.current) {
+          audioStreamRef.current.getTracks().forEach(track => track.stop());
+          audioStreamRef.current = null;
         }
       };
       
@@ -282,6 +283,10 @@ export default function Home() {
     return () => {
       if (recordedAudioUrl) {
         URL.revokeObjectURL(recordedAudioUrl);
+      }
+      if(audioPlaybackRef.current) {
+        audioPlaybackRef.current.pause();
+        audioPlaybackRef.current = null;
       }
     }
   }, [recordedAudioUrl]);
