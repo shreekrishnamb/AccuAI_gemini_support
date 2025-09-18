@@ -54,11 +54,15 @@ export default function Home() {
   const [answer, setAnswer] = useState('');
   const [isAnswering, setIsAnswering] = useState(false);
   const [hasMicPermission, setHasMicPermission] = useState<boolean | null>(null);
+  const [lastRecordingUrl, setLastRecordingUrl] = useState<string | null>(null);
+  const [isPlayingRecording, setIsPlayingRecording] = useState(false);
 
   const { toast } = useToast();
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const audioStreamRef = useRef<MediaStream | null>(null);
+  const audioPlaybackRef = useRef<HTMLAudioElement | null>(null);
+
 
   useEffect(() => {
     setIsClient(true);
@@ -89,6 +93,33 @@ export default function Home() {
     setTranslatedText(translation);
     setIsTranslating(false);
   }, [sourceText, sourceLang, targetLang]);
+  
+  const handleTranscription = async (audioBlob: Blob) => {
+    setIsTranscribing(true);
+    try {
+      const base64Audio = await blobToBase64(audioBlob);
+      const transcription = await transcribeAudio(base64Audio);
+      if (transcription.startsWith('Error:')) {
+        toast({
+          variant: "destructive",
+          title: "Transcription Failed",
+          description: transcription,
+        });
+      } else {
+        setSourceText(transcription);
+        await handleTranslate(transcription);
+      }
+    } catch (error) {
+      console.error("Transcription failed", error);
+      toast({
+        variant: "destructive",
+        title: "Transcription Failed",
+        description: "Could not transcribe the audio. Please try again.",
+      });
+    } finally {
+      setIsTranscribing(false);
+    }
+  };
 
   const handleStopRecording = useCallback(() => {
     if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
@@ -117,6 +148,7 @@ export default function Home() {
       });
       return;
     }
+    setLastRecordingUrl(null);
     audioChunksRef.current = [];
 
     try {
@@ -134,9 +166,11 @@ export default function Home() {
       const mimeTypes = [
         'audio/webm;codecs=opus',
         'audio/webm',
+        'audio/ogg;codecs=opus',
       ];
       const supportedMimeType = mimeTypes.find(type => MediaRecorder.isTypeSupported(type));
-       if (!supportedMimeType) {
+
+      if (!supportedMimeType) {
         toast({
             variant: 'destructive',
             title: 'Recording format not supported',
@@ -157,6 +191,10 @@ export default function Home() {
       mediaRecorder.onstop = async () => {
         const mimeType = mediaRecorderRef.current?.mimeType || 'audio/webm';
         const audioBlob = new Blob(audioChunksRef.current, { type: mimeType });
+        
+        const audioUrl = URL.createObjectURL(audioBlob);
+        setLastRecordingUrl(audioUrl);
+        
         audioChunksRef.current = [];
         
         if (audioStreamRef.current) {
@@ -164,22 +202,7 @@ export default function Home() {
           audioStreamRef.current = null;
         }
         setIsRecording(false);
-        setIsTranscribing(true);
-        try {
-          const base64Audio = await blobToBase64(audioBlob);
-          const transcription = await transcribeAudio(base64Audio);
-          setSourceText(transcription);
-          await handleTranslate(transcription);
-        } catch (error) {
-          console.error("Transcription failed", error);
-          toast({
-            variant: "destructive",
-            title: "Transcription Failed",
-            description: "Could not transcribe the audio. Please try again.",
-          });
-        } finally {
-          setIsTranscribing(false);
-        }
+        await handleTranscription(audioBlob);
       };
       
       mediaRecorder.start();
@@ -201,6 +224,30 @@ export default function Home() {
     } else {
       handleStartRecording();
     }
+  };
+
+  const handlePlayRecording = () => {
+    if (lastRecordingUrl) {
+      if (audioPlaybackRef.current && !audioPlaybackRef.current.paused) {
+        audioPlaybackRef.current.pause();
+        audioPlaybackRef.current.currentTime = 0;
+        setIsPlayingRecording(false);
+      } else {
+        const audio = new Audio(lastRecordingUrl);
+        audio.play();
+        audio.onplay = () => setIsPlayingRecording(true);
+        audio.onpause = () => setIsPlayingRecording(false);
+        audio.onended = () => setIsPlayingRecording(false);
+        audio.onerror = (e) => { console.error("Audio playback error:", e); setIsPlayingRecording(false); };
+        audioPlaybackRef.current = audio;
+      }
+    }
+    return () => {
+      if (audioPlaybackRef.current) {
+        audioPlaybackRef.current.pause();
+        audioPlaybackRef.current = null;
+      }
+    };
   };
 
   const handleSwapLanguages = () => {
@@ -313,21 +360,38 @@ export default function Home() {
                 </div>
               )}
               <div className="flex items-center justify-between gap-2">
-                 <Tooltip>
+                <div className="flex items-center gap-2">
+                  <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button 
+                          size="icon"
+                          variant={isRecording ? 'destructive' : 'outline'}
+                          onClick={handleMicClick} 
+                          disabled={hasMicPermission === false || !hasMediaRecorder || isTranscribing}
+                        >
+                          {isRecording ? <Pause className="h-5 w-5" /> : <Mic className="h-5 w-5" />}
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>{isRecording ? 'Stop recording' : 'Start recording'}</p>
+                      </TooltipContent>
+                  </Tooltip>
+                  <Tooltip>
                     <TooltipTrigger asChild>
-                      <Button 
+                      <Button
                         size="icon"
-                        variant={isRecording ? 'destructive' : 'outline'}
-                        onClick={handleMicClick} 
-                        disabled={hasMicPermission === false || !hasMediaRecorder || isTranscribing}
+                        variant="outline"
+                        onClick={handlePlayRecording}
+                        disabled={!lastRecordingUrl || isRecording || isTranscribing}
                       >
-                        {isRecording ? <Pause className="h-5 w-5" /> : <Mic className="h-5 w-5" />}
+                        {isPlayingRecording ? <Pause className="h-5 w-5" /> : <Play className="h-5 w-5" />}
                       </Button>
                     </TooltipTrigger>
                     <TooltipContent>
-                      <p>{isRecording ? 'Stop recording' : 'Start recording'}</p>
+                      <p>{!lastRecordingUrl ? "No recording to play" : isPlayingRecording ? "Pause recording" : "Play last recording"}</p>
                     </TooltipContent>
                   </Tooltip>
+                </div>
                 <Button onClick={() => handleTranslate()} disabled={!sourceText.trim() || isUIBlocked}>
                   {isTranslating ? (
                     <>
