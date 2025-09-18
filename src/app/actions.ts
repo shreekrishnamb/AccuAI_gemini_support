@@ -70,6 +70,7 @@ export async function transcribeAudio(audioDataUri: string): Promise<string> {
     return result.transcription;
   } catch (error) {
     console.error('Transcription failed in action:', error);
-    return 'Error: Could not transcribe audio.';
+    // Re-throw the error to be caught by the client
+    throw error;
   }
 }

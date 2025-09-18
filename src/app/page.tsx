@@ -107,22 +107,14 @@ export default function Home() {
       const base64Audio = await blobToBase64(audioBlob);
       console.log('Audio converted to Base64, length:', base64Audio.length);
       const transcription = await transcribeAudio(base64Audio);
-      if (transcription.startsWith('Error:')) {
-        toast({
-          variant: "destructive",
-          title: "Transcription Failed",
-          description: transcription,
-        });
-      } else {
-        setSourceText(transcription);
-        await handleTranslate(transcription);
-      }
-    } catch (error) {
+      setSourceText(transcription);
+      await handleTranslate(transcription);
+    } catch (error: any) {
       console.error("Transcription failed on client", error);
       toast({
         variant: "destructive",
         title: "Transcription Failed",
-        description: "Could not transcribe the audio. Please try again.",
+        description: error.message || "Could not transcribe the audio. Please try again.",
       });
     } finally {
       setIsTranscribing(false);
