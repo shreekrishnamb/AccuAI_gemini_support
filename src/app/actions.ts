@@ -60,14 +60,16 @@ export async function answerQuestion(
 }
 
 export async function transcribeAudio(audioDataUri: string): Promise<string> {
+  console.log('transcribeAudio action received data URI of length:', audioDataUri.length);
   if (!audioDataUri) {
     return '';
   }
   try {
     const result = await transcribeAudioFlow({ audio: audioDataUri });
+    console.log('Transcription successful in action:', result.transcription);
     return result.transcription;
   } catch (error) {
-    console.error('Transcription failed:', error);
+    console.error('Transcription failed in action:', error);
     return 'Error: Could not transcribe audio.';
   }
 }

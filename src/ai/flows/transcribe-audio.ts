@@ -30,18 +30,33 @@ export async function transcribeAudio(input: TranscribeAudioInput): Promise<Tran
 async function toWav(
   dataURI: string,
 ): Promise<string> {
+    console.log('toWav started for data URI:', dataURI.substring(0, 50) + '...');
     const audioBuffer = Buffer.from(
       dataURI.substring(dataURI.indexOf(',') + 1),
       'base64'
     );
+    console.log('Converted data URI to buffer of length:', audioBuffer.length);
+
     const reader = new wav.Reader();
     const pcmData: Buffer[] = [];
+    
     return new Promise((resolve, reject) => {
+        reader.on('format', (format) => {
+          console.log('WAV reader format:', format);
+        });
+
         reader.on('data', (chunk) => {
             pcmData.push(chunk);
         });
 
         reader.on('end', () => {
+            console.log('WAV reader finished. Total PCM chunks:', pcmData.length);
+            const totalPcmLength = pcmData.reduce((acc, b) => acc + b.length, 0);
+            console.log('Total PCM data length:', totalPcmLength);
+            if (totalPcmLength === 0) {
+              return reject(new Error("PCM data is empty, cannot create WAV."));
+            }
+
             const writer = new wav.Writer({
                 channels: 1,
                 sampleRate: 16000,
@@ -57,12 +72,22 @@ async function toWav(
             const bufs: Buffer[] = [];
             writer.on('data', (d) => bufs.push(d));
             writer.on('end', () => {
-                resolve('data:audio/wav;base64,' + Buffer.concat(bufs).toString('base64'));
+                const finalWavBuffer = Buffer.concat(bufs);
+                console.log('WAV writer finished. Final WAV buffer length:', finalWavBuffer.length);
+                resolve('data:audio/wav;base64,' + finalWavBuffer.toString('base64'));
             });
-            writer.on('error', reject);
+            writer.on('error', (err) => {
+              console.error('WAV writer error:', err);
+              reject(err);
+            });
+
             writable.pipe(writer);
         });
-        reader.on('error', reject);
+
+        reader.on('error', (err) => {
+          console.error('WAV reader error:', err);
+          reject(err);
+        });
 
         const readable = new Readable();
         readable.push(audioBuffer);
@@ -78,15 +103,27 @@ const transcribeAudioFlow = ai.defineFlow(
     outputSchema: TranscribeAudioOutputSchema,
   },
   async (input) => {
-    const wavAudio = await toWav(input.audio);
-    const {text} = await ai.generate({
-        model: 'gemini-1.5-flash-latest',
-        prompt: [
-            {text: 'Transcribe the following audio:'},
-            {media: {url: wavAudio}}
-        ],
-    });
-    
-    return { transcription: text };
+    console.log('transcribeAudioFlow started.');
+    try {
+      const wavAudio = await toWav(input.audio);
+      console.log('Successfully converted to WAV:', wavAudio.substring(0, 50) + '...');
+      
+      console.log('Sending to Gemini for transcription...');
+      const {text} = await ai.generate({
+          model: 'gemini-1.5-flash-latest',
+          prompt: [
+              {text: 'Transcribe the following audio:'},
+              {media: {url: wavAudio, contentType: 'audio/wav'}}
+          ],
+      });
+      
+      console.log('Gemini transcription result:', text);
+      return { transcription: text };
+
+    } catch (e) {
+      console.error('Error in transcribeAudioFlow:', e);
+      // Re-throw the error to be caught by the action
+      throw e;
+    }
   }
 );

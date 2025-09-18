@@ -96,8 +96,10 @@ export default function Home() {
   
   const handleTranscription = async (audioBlob: Blob) => {
     setIsTranscribing(true);
+    console.log('handleTranscription called with blob:', audioBlob);
     try {
       const base64Audio = await blobToBase64(audioBlob);
+      console.log('Audio converted to Base64, length:', base64Audio.length);
       const transcription = await transcribeAudio(base64Audio);
       if (transcription.startsWith('Error:')) {
         toast({
@@ -110,7 +112,7 @@ export default function Home() {
         await handleTranslate(transcription);
       }
     } catch (error) {
-      console.error("Transcription failed", error);
+      console.error("Transcription failed on client", error);
       toast({
         variant: "destructive",
         title: "Transcription Failed",
