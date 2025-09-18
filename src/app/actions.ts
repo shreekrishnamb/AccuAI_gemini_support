@@ -73,5 +73,3 @@ export async function transcribeAudio(audioDataUri: string): Promise<string> {
     return 'Error: Could not transcribe audio.';
   }
 }
-
-    

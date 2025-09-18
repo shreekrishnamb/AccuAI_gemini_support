@@ -70,18 +70,20 @@ export default function Home() {
 
   useEffect(() => {
     setIsClient(true);
-    setCanShare(!!(navigator && navigator.share));
-    setHasSpeechSynthesis('speechSynthesis' in window);
-    setHasMediaRecorder('MediaRecorder' in window);
+    if (typeof window !== 'undefined') {
+      setCanShare(!!(navigator && navigator.share));
+      setHasSpeechSynthesis('speechSynthesis' in window);
+      setHasMediaRecorder('MediaRecorder' in window);
 
-    navigator.mediaDevices.getUserMedia({ audio: true })
-      .then(stream => {
-        setHasMicPermission(true);
-        stream.getTracks().forEach(track => track.stop());
-      })
-      .catch(() => {
-        setHasMicPermission(false);
-      });
+      navigator.mediaDevices.getUserMedia({ audio: true })
+        .then(stream => {
+          setHasMicPermission(true);
+          stream.getTracks().forEach(track => track.stop());
+        })
+        .catch(() => {
+          setHasMicPermission(false);
+        });
+    }
   }, []);
 
   const handleTranslate = useCallback(async (textToTranslate?: string) => {
@@ -513,5 +515,3 @@ export default function Home() {
     </TooltipProvider>
   );
 }
-
-    
