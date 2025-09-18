@@ -222,7 +222,7 @@ export default function Home() {
         description: 'Please allow microphone access in your browser settings.',
       });
     }
-  }, [hasMediaRecorder, toast, handleTranslate]);
+  }, [hasMediaRecorder, toast]);
   
   const handleMicClick = () => {
     if (isRecording) {
@@ -513,3 +513,5 @@ export default function Home() {
     </TooltipProvider>
   );
 }
+
+    
