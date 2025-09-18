@@ -113,7 +113,7 @@ export default function Home() {
     audioChunksRef.current = [];
 
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: { channelCount: 1 }, video: false });
       audioStreamRef.current = stream;
       setHasMicPermission(true);
 
@@ -140,7 +140,7 @@ export default function Home() {
         }
       };
 
-      mediaRecorder.onstop = async () => {
+      mediaRecorder.onstop = () => {
         const mimeType = mediaRecorderRef.current?.mimeType || 'audio/webm';
         const audioBlob = new Blob(audioChunksRef.current, { type: mimeType });
         const audioUrl = URL.createObjectURL(audioBlob);
