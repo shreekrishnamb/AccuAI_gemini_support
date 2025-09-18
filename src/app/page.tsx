@@ -300,25 +300,9 @@ export default function Home() {
                 placeholder="Type text to translate or use the microphone..."
                 value={sourceText}
                 onChange={(e) => setSourceText(e.target.value)}
-                className="min-h-[200px] text-base resize-none pr-14"
+                className="min-h-[200px] text-base resize-none"
                 disabled={isUIBlocked}
               />
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button 
-                    size="icon"
-                    variant={isRecording ? 'destructive' : 'outline'}
-                    onClick={handleMicClick} 
-                    disabled={hasMicPermission === false || !hasMediaRecorder || isTranscribing}
-                    className="absolute top-3 right-3"
-                  >
-                    {isRecording ? <Pause className="h-5 w-5" /> : <Mic className="h-5 w-5" />}
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>{isRecording ? 'Stop recording' : 'Start recording'}</p>
-                </TooltipContent>
-              </Tooltip>
               {hasMicPermission === false && (
                 <p className="text-sm text-destructive -mt-2">Microphone access denied.</p>
               )}
@@ -329,7 +313,21 @@ export default function Home() {
                 </div>
               )}
               <div className="flex items-center justify-between gap-2">
-                 <div />
+                 <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button 
+                        size="icon"
+                        variant={isRecording ? 'destructive' : 'outline'}
+                        onClick={handleMicClick} 
+                        disabled={hasMicPermission === false || !hasMediaRecorder || isTranscribing}
+                      >
+                        {isRecording ? <Pause className="h-5 w-5" /> : <Mic className="h-5 w-5" />}
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>{isRecording ? 'Stop recording' : 'Start recording'}</p>
+                    </TooltipContent>
+                  </Tooltip>
                 <Button onClick={() => handleTranslate()} disabled={!sourceText.trim() || isUIBlocked}>
                   {isTranslating ? (
                     <>
