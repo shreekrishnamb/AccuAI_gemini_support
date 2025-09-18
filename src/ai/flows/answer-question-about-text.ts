@@ -32,7 +32,11 @@ const prompt = ai.definePrompt({
   name: 'answerQuestionAboutTextPrompt',
   input: {schema: AnswerQuestionAboutTextInputSchema},
   output: {schema: AnswerQuestionAboutTextOutputSchema},
-  prompt: `You are an intelligent assistant. You will be given a text and a question about that text. Your task is to provide a clear and concise answer to the question based *only* on the information present in the given text.
+  prompt: `You are an intelligent assistant. You will be given a text and a question about that text.
+
+Your task is to provide a clear and concise answer to the question. First, try to answer the question based *only* on the information present in the given text.
+
+If the text does not contain the answer, then answer the question using your general knowledge.
 
 Context Text:
 """
