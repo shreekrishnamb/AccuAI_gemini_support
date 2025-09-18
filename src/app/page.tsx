@@ -97,7 +97,8 @@ export default function Home() {
   const handleStopRecording = useCallback(async () => {
     if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
       mediaRecorderRef.current.onstop = async () => {
-        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/wav' });
+        const mimeType = mediaRecorderRef.current?.mimeType || 'audio/webm';
+        const audioBlob = new Blob(audioChunksRef.current, { type: mimeType });
         const audioUrl = URL.createObjectURL(audioBlob);
         setRecordedAudioUrl(audioUrl);
         
@@ -164,26 +165,23 @@ export default function Home() {
       audioStreamRef.current = stream;
       setHasMicPermission(true);
 
-      const options = { mimeType: 'audio/webm' };
-      let mediaRecorder;
-      try {
-        mediaRecorder = new MediaRecorder(stream, options);
-      } catch (e) {
-        console.warn('webm not supported, trying wav');
-        const wavOptions = { mimeType: 'audio/wav' };
-        try {
-          mediaRecorder = new MediaRecorder(stream, wavOptions);
-        } catch (e2) {
-          console.error('wav not supported either', e2);
-          toast({
+      const mimeTypes = [
+          'audio/webm;codecs=opus',
+          'audio/webm',
+          'audio/wav',
+      ];
+      const supportedMimeType = mimeTypes.find(type => MediaRecorder.isTypeSupported(type));
+
+      if (!supportedMimeType) {
+        toast({
             variant: 'destructive',
             title: 'Recording format not supported',
-            description: 'Neither webm nor wav is supported on your browser.',
-          });
-          return;
-        }
+            description: 'No supported audio format found on your browser.',
+        });
+        return;
       }
 
+      const mediaRecorder = new MediaRecorder(stream, { mimeType: supportedMimeType });
       mediaRecorderRef.current = mediaRecorder;
 
       mediaRecorder.ondataavailable = (event) => {
