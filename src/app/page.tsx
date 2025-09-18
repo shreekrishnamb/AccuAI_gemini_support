@@ -49,16 +49,15 @@ export default function Home() {
   const [isTranslating, setIsTranslating] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [isClient, setIsClient] = useState(false);
-  const [canShare, setCanShare] = useState(false);
 
   const { toast } = useToast();
   const speechRecognitionRef = useRef<SpeechRecognition | null>(null);
 
   useEffect(() => {
     setIsClient(true);
-    setCanShare(typeof navigator !== 'undefined' && !!navigator.share);
   }, []);
 
+  const canShare = isClient && typeof navigator !== 'undefined' && !!navigator.share;
   const hasSpeechRecognition = isClient && ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window);
   const hasSpeechSynthesis = isClient && 'speechSynthesis' in window;
 
@@ -86,19 +85,16 @@ export default function Home() {
 
     recognition.onend = async () => {
       setIsRecording(false);
-      if (sourceText.trim()) {
-        setIsTranslating(true);
-        const detected = await detectLanguage(sourceText);
-        if (detected && languages.some(l => l.value.startsWith(detected))) {
-          setSourceLang(detected);
-        }
-        const translation = await translateText(sourceText, detected || sourceLang, targetLang);
-        setTranslatedText(translation);
-        setIsTranslating(false);
-      }
+      // The final transcript is processed in the debounced useEffect
     };
 
     recognition.onerror = (event: any) => {
+      // Ignore 'no-speech' errors, which are common
+      if (event.error === 'no-speech') {
+        setIsRecording(false);
+        return;
+      }
+
       console.error('Speech recognition error:', event.error);
       toast({
         variant: 'destructive',
@@ -109,13 +105,17 @@ export default function Home() {
     };
 
     speechRecognitionRef.current = recognition;
-  }, [hasSpeechRecognition, sourceLang, toast, sourceText, targetLang]);
+  }, [hasSpeechRecognition, sourceLang, toast]);
 
 
   const handleTranslate = useCallback(async () => {
     if (!sourceText.trim()) return;
     setIsTranslating(true);
-    const translation = await translateText(sourceText, sourceLang, targetLang);
+    const detected = await detectLanguage(sourceText);
+    if (detected && languages.some(l => l.value.startsWith(detected))) {
+      setSourceLang(detected);
+    }
+    const translation = await translateText(sourceText, detected || sourceLang, targetLang);
     setTranslatedText(translation);
     setIsTranslating(false);
   }, [sourceText, sourceLang, targetLang]);
