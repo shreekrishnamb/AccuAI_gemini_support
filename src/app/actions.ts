@@ -3,6 +3,7 @@
 import { improveTranslationQuality } from '@/ai/flows/improve-translation-quality';
 import { suggestTranslationLanguages } from '@/ai/flows/suggest-translation-languages';
 import { answerQuestionAboutText } from '@/ai/flows/answer-question-about-text';
+import { transcribeAudio as transcribeAudioFlow } from '@/ai/flows/transcribe-audio';
 
 
 export async function translateText(
@@ -55,5 +56,18 @@ export async function answerQuestion(
   } catch (error) {
     console.error('Question answering failed:', error);
     return 'Error: Could not get an answer.';
+  }
+}
+
+export async function transcribeAudio(audioDataUri: string): Promise<string> {
+  if (!audioDataUri) {
+    return '';
+  }
+  try {
+    const result = await transcribeAudioFlow({ audio: audioDataUri });
+    return result.transcription;
+  } catch (error) {
+    console.error('Transcription failed:', error);
+    return 'Error: Could not transcribe audio.';
   }
 }

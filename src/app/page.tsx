@@ -35,7 +35,7 @@ import {
 } from '@/components/ui/tooltip';
 import { useToast } from '@/hooks/use-toast';
 import { languages } from '@/lib/languages';
-import { translateText, detectLanguage, answerQuestion } from '@/app/actions';
+import { translateText, detectLanguage, answerQuestion, transcribeAudio } from '@/app/actions';
 import { Logo } from '@/components/icons';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -46,21 +46,19 @@ export default function Home() {
   const [sourceText, setSourceText] = useState('');
   const [translatedText, setTranslatedText] = useState('');
   const [isRecording, setIsRecording] = useState(false);
+  const [isTranscribing, setIsTranscribing] = useState(false);
   const [isTranslating, setIsTranslating] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [isClient, setIsClient] = useState(false);
-  const [recordedAudioUrl, setRecordedAudioUrl] = useState<string | null>(null);
   const [question, setQuestion] = useState('');
   const [answer, setAnswer] = useState('');
   const [isAnswering, setIsAnswering] = useState(false);
   const [hasMicPermission, setHasMicPermission] = useState<boolean | null>(null);
-  const [isPlayingRecording, setIsPlayingRecording] = useState(false);
 
   const { toast } = useToast();
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const audioStreamRef = useRef<MediaStream | null>(null);
-  const audioPlaybackRef = useRef<HTMLAudioElement | null>(null);
 
   useEffect(() => {
     setIsClient(true);
@@ -78,15 +76,16 @@ export default function Home() {
   const hasSpeechSynthesis = isClient && 'speechSynthesis' in window;
   const hasMediaRecorder = isClient && 'MediaRecorder' in window;
 
-  const handleTranslate = useCallback(async () => {
-    if (!sourceText.trim()) return;
+  const handleTranslate = useCallback(async (textToTranslate?: string) => {
+    const text = textToTranslate || sourceText;
+    if (!text.trim()) return;
     setIsTranslating(true);
     setTranslatedText('');
-    const detected = await detectLanguage(sourceText);
+    const detected = await detectLanguage(text);
     if (detected && languages.some(l => l.value.startsWith(detected))) {
       setSourceLang(detected);
     }
-    const translation = await translateText(sourceText, detected || sourceLang, targetLang);
+    const translation = await translateText(text, detected || sourceLang, targetLang);
     setTranslatedText(translation);
     setIsTranslating(false);
   }, [sourceText, sourceLang, targetLang]);
@@ -97,6 +96,18 @@ export default function Home() {
     }
   }, []);
 
+  const blobToBase64 = (blob: Blob): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const base64data = reader.result as string;
+        resolve(base64data);
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+  };
+
   const handleStartRecording = useCallback(async () => {
     if (!hasMediaRecorder) {
       toast({
@@ -105,10 +116,6 @@ export default function Home() {
         description: 'Your browser does not support audio recording.',
       });
       return;
-    }
-    setRecordedAudioUrl(null);
-    if (recordedAudioUrl) {
-      URL.revokeObjectURL(recordedAudioUrl);
     }
     audioChunksRef.current = [];
 
@@ -120,7 +127,6 @@ export default function Home() {
           noiseSuppression: true,
           autoGainControl: true,
         }, 
-        video: false 
       });
       audioStreamRef.current = stream;
       setHasMicPermission(true);
@@ -148,11 +154,9 @@ export default function Home() {
         }
       };
 
-      mediaRecorder.onstop = () => {
+      mediaRecorder.onstop = async () => {
         const mimeType = mediaRecorderRef.current?.mimeType || 'audio/webm';
         const audioBlob = new Blob(audioChunksRef.current, { type: mimeType });
-        const audioUrl = URL.createObjectURL(audioBlob);
-        setRecordedAudioUrl(audioUrl);
         audioChunksRef.current = [];
         
         if (audioStreamRef.current) {
@@ -160,6 +164,22 @@ export default function Home() {
           audioStreamRef.current = null;
         }
         setIsRecording(false);
+        setIsTranscribing(true);
+        try {
+          const base64Audio = await blobToBase64(audioBlob);
+          const transcription = await transcribeAudio(base64Audio);
+          setSourceText(transcription);
+          await handleTranslate(transcription);
+        } catch (error) {
+          console.error("Transcription failed", error);
+          toast({
+            variant: "destructive",
+            title: "Transcription Failed",
+            description: "Could not transcribe the audio. Please try again.",
+          });
+        } finally {
+          setIsTranscribing(false);
+        }
       };
       
       mediaRecorder.start();
@@ -173,7 +193,7 @@ export default function Home() {
         description: 'Please allow microphone access in your browser settings.',
       });
     }
-  }, [hasMediaRecorder, toast, recordedAudioUrl]);
+  }, [hasMediaRecorder, toast, handleTranslate]);
   
   const handleMicClick = () => {
     if (isRecording) {
@@ -183,38 +203,8 @@ export default function Home() {
     }
   };
 
-  const handleTogglePlayRecording = () => {
-    if (!audioPlaybackRef.current) return;
-    if (isPlayingRecording) {
-      audioPlaybackRef.current.pause();
-    } else {
-      audioPlaybackRef.current.play();
-    }
-  };
-
-  useEffect(() => {
-    if (recordedAudioUrl) {
-      const audio = new Audio(recordedAudioUrl);
-      audio.onplay = () => setIsPlayingRecording(true);
-      audio.onpause = () => setIsPlayingRecording(false);
-      audio.onended = () => setIsPlayingRecording(false);
-      audio.onerror = (e) => { console.error("Audio playback error:", e); setIsPlayingRecording(false); };
-      audioPlaybackRef.current = audio;
-    }
-    return () => {
-      if (audioPlaybackRef.current) {
-        audioPlaybackRef.current.pause();
-        audioPlaybackRef.current = null;
-      }
-      if (recordedAudioUrl) {
-        URL.revokeObjectURL(recordedAudioUrl);
-      }
-    };
-  }, [recordedAudioUrl]);
-
-  
   const handleSwapLanguages = () => {
-    if(isTranslating) return;
+    if(isTranslating || isTranscribing) return;
     setSourceLang(targetLang);
     setTargetLang(sourceLang);
     setSourceText(translatedText);
@@ -260,7 +250,7 @@ export default function Home() {
     setIsAnswering(false);
   };
   
-  const isUIBlocked = isTranslating;
+  const isUIBlocked = isTranslating || isTranscribing || isRecording;
 
   return (
     <TooltipProvider>
@@ -310,12 +300,37 @@ export default function Home() {
                 placeholder="Type text to translate or use the microphone..."
                 value={sourceText}
                 onChange={(e) => setSourceText(e.target.value)}
-                className="min-h-[200px] text-base resize-none"
+                className="min-h-[200px] text-base resize-none pr-14"
                 disabled={isUIBlocked}
               />
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button 
+                    size="icon"
+                    variant={isRecording ? 'destructive' : 'outline'}
+                    onClick={handleMicClick} 
+                    disabled={hasMicPermission === false || !hasMediaRecorder || isTranscribing}
+                    className="absolute top-3 right-3"
+                  >
+                    {isRecording ? <Pause className="h-5 w-5" /> : <Mic className="h-5 w-5" />}
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>{isRecording ? 'Stop recording' : 'Start recording'}</p>
+                </TooltipContent>
+              </Tooltip>
+              {hasMicPermission === false && (
+                <p className="text-sm text-destructive -mt-2">Microphone access denied.</p>
+              )}
+               {(isTranscribing || isTranslating) && (
+                <div className="absolute inset-0 flex items-center justify-center bg-background/80 rounded-md">
+                   <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                   <p className="ml-2 text-lg">{isTranscribing ? 'Transcribing...' : 'Translating...'}</p>
+                </div>
+              )}
               <div className="flex items-center justify-between gap-2">
                  <div />
-                <Button onClick={handleTranslate} disabled={!sourceText.trim() || isUIBlocked}>
+                <Button onClick={() => handleTranslate()} disabled={!sourceText.trim() || isUIBlocked}>
                   {isTranslating ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -334,7 +349,7 @@ export default function Home() {
                 readOnly
                 className="min-h-[200px] text-base resize-none bg-muted/50"
               />
-              {isTranslating && !translatedText && (
+              {isTranslating && !translatedText && !isTranscribing && (
                 <div className="absolute inset-0 flex items-center justify-center bg-background/80 rounded-md">
                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
                 </div>
@@ -342,7 +357,7 @@ export default function Home() {
                <div className="flex items-center gap-2">
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <Button size="icon" variant="outline" onClick={handleSpeak} disabled={!translatedText || !hasSpeechSynthesis || isTranslating}>
+                    <Button size="icon" variant="outline" onClick={handleSpeak} disabled={!translatedText || !hasSpeechSynthesis || isUIBlocked}>
                       {isSpeaking ? <Pause className="h-5 w-5" /> : <Volume2 className="h-5 w-5" />}
                     </Button>
                   </TooltipTrigger>
@@ -352,7 +367,7 @@ export default function Home() {
                 </Tooltip>
                  <Tooltip>
                   <TooltipTrigger asChild>
-                    <Button size="icon" variant="outline" onClick={handleCopy} disabled={!translatedText || isTranslating}>
+                    <Button size="icon" variant="outline" onClick={handleCopy} disabled={!translatedText || isUIBlocked}>
                       <Copy className="h-5 w-5" />
                     </Button>
                   </TooltipTrigger>
@@ -363,7 +378,7 @@ export default function Home() {
                 {canShare && (
                    <Tooltip>
                     <TooltipTrigger asChild>
-                       <Button size="icon" variant="outline" onClick={handleShare} disabled={!translatedText || isTranslating}>
+                       <Button size="icon" variant="outline" onClick={handleShare} disabled={!translatedText || isUIBlocked}>
                           <Share2 className="h-5 w-5" />
                        </Button>
                     </TooltipTrigger>
@@ -374,43 +389,6 @@ export default function Home() {
                 )}
               </div>
             </div>
-          </CardContent>
-        </Card>
-
-        <Card className="w-full max-w-4xl shadow-2xl">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Mic className="h-6 w-6 text-primary" />
-              Voice Recorder
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="flex flex-col items-center gap-4">
-            <Button
-              onClick={handleMicClick}
-              disabled={hasMicPermission === false || !hasMediaRecorder}
-              className="w-24"
-              variant={isRecording ? 'destructive' : 'outline'}
-            >
-              {isRecording ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Stop
-                </>
-              ) : (
-                'Record'
-              )}
-            </Button>
-            {hasMicPermission === false && (
-              <p className="text-sm text-destructive">Microphone access denied. Please enable it in your browser settings.</p>
-            )}
-            {recordedAudioUrl && (
-              <div className="w-full pt-4 flex items-center gap-4">
-                 <Button onClick={handleTogglePlayRecording} size="icon" variant="outline">
-                    {isPlayingRecording ? <Pause className="h-5 w-5" /> : <Play className="h-5 w-5" />}
-                  </Button>
-                <audio src={recordedAudioUrl} ref={audioPlaybackRef} className="w-full" controls/>
-              </div>
-            )}
           </CardContent>
         </Card>
 
