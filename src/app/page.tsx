@@ -97,7 +97,7 @@ export default function Home() {
   const handleStopRecording = useCallback(async () => {
     if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
       mediaRecorderRef.current.onstop = async () => {
-        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/wav' });
         const audioUrl = URL.createObjectURL(audioBlob);
         setRecordedAudioUrl(audioUrl);
         
@@ -164,7 +164,26 @@ export default function Home() {
       audioStreamRef.current = stream;
       setHasMicPermission(true);
 
-      const mediaRecorder = new MediaRecorder(stream);
+      const options = { mimeType: 'audio/webm' };
+      let mediaRecorder;
+      try {
+        mediaRecorder = new MediaRecorder(stream, options);
+      } catch (e) {
+        console.warn('webm not supported, trying wav');
+        const wavOptions = { mimeType: 'audio/wav' };
+        try {
+          mediaRecorder = new MediaRecorder(stream, wavOptions);
+        } catch (e2) {
+          console.error('wav not supported either', e2);
+          toast({
+            variant: 'destructive',
+            title: 'Recording format not supported',
+            description: 'Neither webm nor wav is supported on your browser.',
+          });
+          return;
+        }
+      }
+
       mediaRecorderRef.current = mediaRecorder;
 
       mediaRecorder.ondataavailable = (event) => {
@@ -326,12 +345,12 @@ export default function Home() {
                 <div className="flex items-center gap-2">
                    <Tooltip>
                     <TooltipTrigger asChild>
-                      <Button size="icon" onClick={handleMicClick} disabled={!hasMediaRecorder || isTranslating || isTranscribing || hasMicPermission === null}>
+                      <Button size="icon" onClick={handleMicClick} disabled={!hasMediaRecorder || isTranslating || isTranscribing || hasMicPermission === false}>
                         {isRecording ? <Pause className="h-5 w-5 text-red-500" /> : <Mic className="h-5 w-5" />}
                       </Button>
                     </TooltipTrigger>
                     <TooltipContent>
-                      <p>{!hasMediaRecorder ? 'Audio recording not supported' : isRecording ? 'Stop recording' : 'Start recording'}</p>
+                      <p>{hasMicPermission === false ? 'Microphone access denied' : !hasMediaRecorder ? 'Audio recording not supported' : isRecording ? 'Stop recording' : 'Start recording'}</p>
                     </TooltipContent>
                   </Tooltip>
                   <Tooltip>
