@@ -154,7 +154,7 @@ export default function Home() {
         setIsRecording(false);
       };
       
-      mediaRecorder.start(100);
+      mediaRecorder.start();
       setIsRecording(true);
     } catch (err) {
       console.error('Error accessing microphone:', err);
