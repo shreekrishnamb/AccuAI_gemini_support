@@ -46,8 +46,11 @@ const transcribeAudioFlow = ai.defineFlow(
           ],
       });
       
-      console.log('Gemini transcription result:', text);
-      return { transcription: text };
+      // The model sometimes adds a [beep] for silence. Let's remove it.
+      const transcription = text.replace(/^\[beep\]\s*/, '');
+
+      console.log('Gemini transcription result:', transcription);
+      return { transcription };
 
     } catch (e) {
       console.error('Error in transcribeAudioFlow:', e);
