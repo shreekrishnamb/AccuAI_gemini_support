@@ -222,7 +222,7 @@ export default function Home() {
         description: 'Please allow microphone access in your browser settings.',
       });
     }
-  }, [hasMediaRecorder, toast]);
+  }, [hasMediaRecorder, toast, handleTranslate]);
   
   const handleMicClick = () => {
     if (isRecording) {
@@ -403,7 +403,7 @@ export default function Home() {
                   </Tooltip>
                 </div>
                 <Button onClick={() => handleTranslate()} disabled={!sourceText.trim() || isUIBlocked}>
-                  {isTranslating ? (
+                  {isTranslating && !isTranscribing ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                       Translating...
