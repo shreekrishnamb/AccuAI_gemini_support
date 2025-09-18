@@ -116,7 +116,12 @@ export default function Home() {
     audioChunksRef.current = [];
 
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const stream = await navigator.mediaDevices.getUserMedia({ 
+        audio: {
+          channelCount: 2,
+          echoCancellation: true
+        } 
+      });
       audioStreamRef.current = stream;
       setHasMicPermission(true);
 
