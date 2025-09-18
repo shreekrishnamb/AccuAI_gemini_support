@@ -2,6 +2,7 @@
 
 import { improveTranslationQuality } from '@/ai/flows/improve-translation-quality';
 import { suggestTranslationLanguages } from '@/ai/flows/suggest-translation-languages';
+import { answerQuestionAboutText } from '@/ai/flows/answer-question-about-text';
 
 export async function translateText(
   text: string,
@@ -37,5 +38,21 @@ export async function detectLanguage(text: string): Promise<string | null> {
   } catch (error) {
     console.error('Language detection failed:', error);
     return null;
+  }
+}
+
+export async function answerQuestion(
+  text: string,
+  question: string
+): Promise<string> {
+  if (!text || !question) {
+    return '';
+  }
+  try {
+    const result = await answerQuestionAboutText({ text, question });
+    return result.answer;
+  } catch (error) {
+    console.error('Question answering failed:', error);
+    return 'Error: Could not get an answer.';
   }
 }

@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import {
   ArrowRightLeft,
   Copy,
+  HelpCircle,
   Loader2,
   Mic,
   Pause,
@@ -33,8 +34,10 @@ import {
 } from '@/components/ui/tooltip';
 import { useToast } from '@/hooks/use-toast';
 import { languages } from '@/lib/languages';
-import { translateText, detectLanguage } from '@/app/actions';
+import { translateText, detectLanguage, answerQuestion } from '@/app/actions';
 import { Logo } from '@/components/icons';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 
 type SpeechRecognition = any;
 
@@ -49,6 +52,9 @@ export default function Home() {
   const [isClient, setIsClient] = useState(false);
   const [recordedAudioUrl, setRecordedAudioUrl] = useState<string | null>(null);
   const [isPlayingRecording, setIsPlayingRecording] = useState(false);
+  const [question, setQuestion] = useState('');
+  const [answer, setAnswer] = useState('');
+  const [isAnswering, setIsAnswering] = useState(false);
 
   const { toast } = useToast();
   const speechRecognitionRef = useRef<SpeechRecognition | null>(null);
@@ -72,7 +78,6 @@ export default function Home() {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
 
-      // Speech Recognition setup
       const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
       const recognition = new SpeechRecognition();
       recognition.continuous = true;
@@ -102,15 +107,14 @@ export default function Home() {
       recognition.onerror = (event: any) => {
         if (event.error === 'no-speech') {
           // This is a common case, so we don't need to show a toast.
-          // The onend handler will be called, which will stop the recording.
-          return;
+        } else {
+          console.error('Speech recognition error:', event.error);
+          toast({
+            variant: 'destructive',
+            title: 'Speech Recognition Error',
+            description: event.error,
+          });
         }
-        console.error('Speech recognition error:', event.error);
-        toast({
-          variant: 'destructive',
-          title: 'Speech Recognition Error',
-          description: event.error,
-        });
         setIsRecording(false);
          if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
             mediaRecorderRef.current.stop();
@@ -118,7 +122,6 @@ export default function Home() {
       };
       speechRecognitionRef.current = recognition;
 
-      // Media Recorder setup
       const mediaRecorder = new MediaRecorder(stream);
       mediaRecorder.ondataavailable = (event) => {
         if (event.data.size > 0) {
@@ -183,7 +186,7 @@ export default function Home() {
     setSourceLang(targetLang);
     setTargetLang(sourceLang);
     setSourceText(translatedText);
-    setTranslatedText(''); // Clear translation to avoid confusion
+    setTranslatedText(''); 
   };
 
   const handleSpeak = () => {
@@ -222,6 +225,15 @@ export default function Home() {
         console.error('Sharing failed', error);
       }
     }
+  };
+
+  const handleAskQuestion = async () => {
+    if (!question.trim() || !translatedText.trim()) return;
+    setIsAnswering(true);
+    setAnswer('');
+    const result = await answerQuestion(translatedText, question);
+    setAnswer(result);
+    setIsAnswering(false);
   };
   
   useEffect(() => {
@@ -374,6 +386,52 @@ export default function Home() {
             </div>
           </CardContent>
         </Card>
+
+        {translatedText && (
+          <Card className="w-full max-w-4xl shadow-2xl mt-6">
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <HelpCircle className="h-6 w-6 text-primary" />
+                <h2 className="text-2xl font-bold">Ask about the Translation</h2>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="flex flex-col gap-4">
+                <div>
+                  <Label htmlFor="question-input">Your Question</Label>
+                  <Input
+                    id="question-input"
+                    placeholder="e.g., Explain this in simpler terms."
+                    value={question}
+                    onChange={(e) => setQuestion(e.target.value)}
+                    disabled={isAnswering}
+                  />
+                </div>
+                <Button onClick={handleAskQuestion} disabled={!question.trim() || isAnswering}>
+                  {isAnswering ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Getting Answer...
+                    </>
+                  ) : (
+                    'Ask Gemini'
+                  )}
+                </Button>
+                {isAnswering && !answer && (
+                   <div className="flex items-center justify-center p-8">
+                     <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                   </div>
+                )}
+                {answer && (
+                  <div className="p-4 bg-muted/50 rounded-md border">
+                    <p className="font-semibold mb-2">Answer:</p>
+                    <div className="prose prose-sm max-w-none">{answer}</div>
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        )}
       </main>
     </TooltipProvider>
   );
