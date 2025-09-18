@@ -113,7 +113,15 @@ export default function Home() {
     audioChunksRef.current = [];
 
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: { channelCount: 1 }, video: false });
+      const stream = await navigator.mediaDevices.getUserMedia({ 
+        audio: { 
+          channelCount: 1,
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
+        }, 
+        video: false 
+      });
       audioStreamRef.current = stream;
       setHasMicPermission(true);
 
@@ -198,6 +206,9 @@ export default function Home() {
         audioPlaybackRef.current.pause();
         audioPlaybackRef.current = null;
       }
+      if (recordedAudioUrl) {
+        URL.revokeObjectURL(recordedAudioUrl);
+      }
     };
   }, [recordedAudioUrl]);
 
@@ -249,7 +260,7 @@ export default function Home() {
     setIsAnswering(false);
   };
   
-  const isUIBlocked = isTranslating || isRecording;
+  const isUIBlocked = isTranslating;
 
   return (
     <TooltipProvider>
@@ -303,9 +314,7 @@ export default function Home() {
                 disabled={isUIBlocked}
               />
               <div className="flex items-center justify-between gap-2">
-                 <Button onClick={handleMicClick} size="icon" variant={isRecording ? 'destructive' : 'outline'} disabled={hasMicPermission === false || !hasMediaRecorder || isUIBlocked}>
-                  <Mic className="h-5 w-5" />
-                </Button>
+                 <div />
                 <Button onClick={handleTranslate} disabled={!sourceText.trim() || isUIBlocked}>
                   {isTranslating ? (
                     <>
@@ -380,6 +389,7 @@ export default function Home() {
               onClick={handleMicClick}
               disabled={hasMicPermission === false || !hasMediaRecorder}
               className="w-24"
+              variant={isRecording ? 'destructive' : 'outline'}
             >
               {isRecording ? (
                 <>
