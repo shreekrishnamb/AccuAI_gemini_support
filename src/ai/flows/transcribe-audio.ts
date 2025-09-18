@@ -35,9 +35,9 @@ const transcribeAudioFlow = ai.defineFlow(
   },
   async (input) => {
     const { text } = await ai.generate({
-      model: 'googleai/gemini-2.5-flash-image-preview',
+      model: 'googleai/gemini-1.5-flash-latest',
       prompt: [
-        {text: 'Provide a verbatim transcription of the following audio recording:'},
+        {text: 'Transcribe the following audio recording:'},
         {media: {url: input.audioDataUri}}
       ],
     });
