@@ -17,7 +17,6 @@ import {
   Card,
   CardContent,
   CardHeader,
-  CardTitle,
 } from '@/components/ui/card';
 import {
   Select,
@@ -57,6 +56,11 @@ export default function Home() {
   const [lastRecordingUrl, setLastRecordingUrl] = useState<string | null>(null);
   const [isPlayingRecording, setIsPlayingRecording] = useState(false);
 
+  // Client-side-only state
+  const [canShare, setCanShare] = useState(false);
+  const [hasSpeechSynthesis, setHasSpeechSynthesis] = useState(false);
+  const [hasMediaRecorder, setHasMediaRecorder] = useState(false);
+
   const { toast } = useToast();
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
@@ -66,6 +70,10 @@ export default function Home() {
 
   useEffect(() => {
     setIsClient(true);
+    setCanShare(!!(navigator && navigator.share));
+    setHasSpeechSynthesis('speechSynthesis' in window);
+    setHasMediaRecorder('MediaRecorder' in window);
+
     navigator.mediaDevices.getUserMedia({ audio: true })
       .then(stream => {
         setHasMicPermission(true);
@@ -75,10 +83,6 @@ export default function Home() {
         setHasMicPermission(false);
       });
   }, []);
-
-  const canShare = isClient && typeof navigator !== 'undefined' && !!navigator.share;
-  const hasSpeechSynthesis = isClient && 'speechSynthesis' in window;
-  const hasMediaRecorder = isClient && 'MediaRecorder' in window;
 
   const handleTranslate = useCallback(async (textToTranslate?: string) => {
     const text = textToTranslate || sourceText;
