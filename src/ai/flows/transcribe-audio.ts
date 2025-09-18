@@ -42,6 +42,10 @@ const transcribeAudioFlow = ai.defineFlow(
       ],
     });
 
+    if (text.includes('repeated "p" sound') || text.trim() === '') {
+      return { transcription: "I'm sorry, I couldn't understand the audio. Please try recording again." };
+    }
+
     return { transcription: text };
   }
 );

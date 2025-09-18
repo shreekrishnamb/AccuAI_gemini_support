@@ -117,10 +117,7 @@ export default function Home() {
 
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ 
-        audio: {
-          channelCount: 2,
-          echoCancellation: true
-        } 
+        audio: true
       });
       audioStreamRef.current = stream;
       setHasMicPermission(true);
@@ -286,12 +283,12 @@ export default function Home() {
       audioPlaybackRef.current = audio;
     }
     return () => {
-      if (recordedAudioUrl) {
-        URL.revokeObjectURL(recordedAudioUrl);
-      }
-      if(audioPlaybackRef.current) {
+      if (audioPlaybackRef.current) {
         audioPlaybackRef.current.pause();
         audioPlaybackRef.current = null;
+      }
+      if (recordedAudioUrl) {
+        URL.revokeObjectURL(recordedAudioUrl);
       }
     }
   }, [recordedAudioUrl]);
