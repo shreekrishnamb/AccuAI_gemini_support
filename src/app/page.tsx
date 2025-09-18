@@ -94,13 +94,15 @@ export default function Home() {
 
       recognition.onend = () => {
         setIsRecording(false);
-        mediaRecorderRef.current?.stop();
+        if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
+            mediaRecorderRef.current.stop();
+        }
       };
 
       recognition.onerror = (event: any) => {
         if (event.error === 'no-speech') {
-          setIsRecording(false);
-          mediaRecorderRef.current?.stop();
+          // This is a common case, so we don't need to show a toast.
+          // The onend handler will be called, which will stop the recording.
           return;
         }
         console.error('Speech recognition error:', event.error);
@@ -110,7 +112,9 @@ export default function Home() {
           description: event.error,
         });
         setIsRecording(false);
-        mediaRecorderRef.current?.stop();
+         if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
+            mediaRecorderRef.current.stop();
+        }
       };
       speechRecognitionRef.current = recognition;
 
@@ -159,7 +163,6 @@ export default function Home() {
   const handleMicClick = async () => {
     if (isRecording) {
       speechRecognitionRef.current?.stop();
-      // MediaRecorder is stopped in recognition.onend
     } else {
       const mediaInitialized = await initializeMedia();
       if (!mediaInitialized) return;
