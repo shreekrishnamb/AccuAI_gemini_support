@@ -108,7 +108,6 @@ export default function Home() {
       console.log('Audio converted to Base64, length:', base64Audio.length);
       const transcription = await transcribeAudio(base64Audio);
       setSourceText(transcription);
-      await handleTranslate(transcription);
     } catch (error: any) {
       console.error("Transcription failed on client", error);
       toast({
