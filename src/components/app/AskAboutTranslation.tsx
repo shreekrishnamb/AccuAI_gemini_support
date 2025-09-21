@@ -71,12 +71,12 @@ export function AskAboutTranslation({ translatedText }: AskAboutTranslationProps
                             disabled={!translatedText}
                         >
                             <Sparkles className="h-5 w-5" />
-                            Ask AI
+                            Get Insights
                         </Button>
                     </SheetTrigger>
                 </TooltipTrigger>
                 <TooltipContent>
-                    <p>Ask AI about the translation</p>
+                    <p>Get AI-powered insights about the translation</p>
                 </TooltipContent>
             </Tooltip>
         </TooltipProvider>

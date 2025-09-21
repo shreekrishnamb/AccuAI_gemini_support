@@ -375,11 +375,10 @@ export function TranslationCard({
                       </TooltipContent>
                     </Tooltip>
                   )}
-                  
+                  {children}
                 </div>
 
                 <div className="flex items-center gap-2">
-                    {children}
                     <Tooltip>
                     <TooltipTrigger asChild>
                         <Button size="icon" variant="outline" onClick={handleSavePhrase} disabled={!translatedText || isCurrentPhraseSaved || isUIBlocked}>
