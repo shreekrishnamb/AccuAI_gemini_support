@@ -1,7 +1,7 @@
 
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { ArrowLeft, Cpu, Dna, Rocket, ShieldCheck } from "lucide-react";
+import { ArrowLeft, Cpu, Dna, Rocket, ShieldCheck, Languages, BotMessageSquare, Mic } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 import AppLayout from "../(app)/layout";
@@ -24,10 +24,28 @@ const techStack = [
   },
 ];
 
+const features = [
+    {
+        name: "Real-Time Translation",
+        description: "Translate speech and text instantly across dozens of supported languages.",
+        icon: <Languages className="h-6 w-6 text-primary" />,
+    },
+    {
+        name: "AI-Powered Insights",
+        description: "Ask questions to understand the context, formality, and nuances of a translation.",
+        icon: <BotMessageSquare className="h-6 w-6 text-primary" />,
+    },
+    {
+        name: "Voice Transcription",
+        description: "Speak directly into your device and have your words accurately transcribed to text.",
+        icon: <Mic className="h-6 w-6 text-primary" />,
+    },
+];
+
 export default function AboutPage() {
   return (
     <AppLayout>
-      <div className="max-w-4xl mx-auto flex flex-col gap-8">
+      <div className="max-w-4xl mx-auto flex flex-col gap-8 pb-12">
         <div className="flex justify-start">
           <Button asChild variant="outline">
             <Link href="/">
@@ -87,6 +105,26 @@ export default function AboutPage() {
             </Card>
           ))}
         </div>
+        
+        <div className="text-center pt-8 mt-8">
+            <h2 className="text-3xl font-bold tracking-tight">Features</h2>
+            <p className="mt-2 text-md text-muted-foreground">Discover what makes AccuAI powerful and easy to use.</p>
+        </div>
+
+        <div className="grid gap-8 md:grid-cols-3">
+          {features.map((feature) => (
+            <Card key={feature.name} className="text-center shadow-lg hover:shadow-xl transition-shadow">
+              <CardHeader>
+                <div className="flex justify-center mb-2">{feature.icon}</div>
+                <CardTitle>{feature.name}</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-muted-foreground">{feature.description}</p>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+
       </div>
     </AppLayout>
   );
