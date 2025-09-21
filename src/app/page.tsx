@@ -130,6 +130,8 @@ export default function Home() {
             p => p.sourceText === sourceText && p.translatedText === translatedText
           )}
           isUIBlocked={isUIBlocked}
+          sourceLang={sourceLang}
+          targetLang={targetLang}
         >
           <AskAboutTranslation translatedText={translatedText} />
         </TranslationCard>

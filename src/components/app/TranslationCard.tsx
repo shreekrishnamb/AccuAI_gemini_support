@@ -35,6 +35,8 @@ interface TranslationCardProps {
   handleSavePhrase: () => void;
   isCurrentPhraseSaved: boolean;
   isUIBlocked: boolean;
+  sourceLang: string;
+  targetLang: string;
   children?: ReactNode;
 }
 
@@ -49,6 +51,8 @@ export function TranslationCard({
   handleSavePhrase,
   isCurrentPhraseSaved,
   isUIBlocked,
+  sourceLang,
+  targetLang,
   children
 }: TranslationCardProps) {
   const [isRecording, setIsRecording] = useState(false);
@@ -231,7 +235,7 @@ export function TranslationCard({
     if (!hasSpeechSynthesis || !translatedText.trim() || isSpeaking) return;
     speechSynthesis.cancel();
     const utterance = new SpeechSynthesisUtterance(translatedText);
-    utterance.lang = translatedText; // This is likely wrong, should be targetLang
+    utterance.lang = targetLang;
     utterance.onstart = () => setIsSpeaking(true);
     utterance.onend = () => setIsSpeaking(false);
     utterance.onerror = () => setIsSpeaking(false);
