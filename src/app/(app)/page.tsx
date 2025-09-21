@@ -50,6 +50,23 @@ export default function DashboardPage() {
         <Card className="shadow-lg hover:shadow-xl transition-shadow">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
+              <Book className="text-primary" />
+              Blog
+            </CardTitle>
+            <CardDescription>
+              Read our latest articles on AI, languages, and translation.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+             <Link href="/blog">
+                <Button className="w-full" variant="outline">Read Blog</Button>
+            </Link>
+          </CardContent>
+        </Card>
+      </div>
+       <Card className="shadow-lg hover:shadow-xl transition-shadow mt-4">
+          <CardHeader className="text-center">
+            <CardTitle className="flex items-center justify-center gap-2">
               <Mail className="text-primary" />
               Contact Us
             </CardTitle>
@@ -57,13 +74,12 @@ export default function DashboardPage() {
               Have questions or feedback? We'd love to hear from you.
             </CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="flex justify-center">
              <a href="mailto:contact@accuai.com">
                 <Button className="w-full" variant="outline">Get in Touch</Button>
             </a>
           </CardContent>
         </Card>
-      </div>
     </div>
   )
 }
