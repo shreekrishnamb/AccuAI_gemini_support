@@ -1,115 +1,34 @@
 
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from 'react';
-import {
-  ArrowRightLeft,
-  Copy,
-  HelpCircle,
-  Loader2,
-  Mic,
-  MessageSquareQuote,
-  Pause,
-  Play,
-  Share2,
-  Star,
-  Trash2,
-  Volume2,
-} from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import { Textarea } from '@/components/ui/textarea';
-import {
-  Tooltip,
-  TooltipProvider,
-  TooltipTrigger,
-  TooltipContent,
-} from '@/components/ui/tooltip';
+import { useState, useEffect, useCallback } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { languages } from '@/lib/languages';
-import { translateText, detectLanguage, answerQuestion, transcribeAudio } from '@/app/actions';
+import { translateText, detectLanguage, transcribeAudio } from '@/app/actions';
 import { Logo } from '@/components/icons';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Separator } from '@/components/ui/separator';
+import { SavedPhrase } from '@/lib/types';
 
-interface SavedPhrase {
-  id: string;
-  sourceText: string;
-  translatedText: string;
-  sourceLang: string;
-  targetLang: string;
-}
-
-const commonPhrases = [
-  "Hello, how are you?",
-  "Thank you so much.",
-  "Where is the nearest restroom?",
-  "How much does this cost?",
-  "I need help, please.",
-  "Good morning!",
-  "Can you speak slower?",
-  "I don't understand.",
-];
+import { LanguageSelectors } from '@/components/app/LanguageSelectors';
+import { TranslationCard } from '@/components/app/TranslationCard';
+import { CommonPhrases } from '@/components/app/CommonPhrases';
+import { SavedPhrases } from '@/components/app/SavedPhrases';
+import { AskAboutTranslation } from '@/components/app/AskAboutTranslation';
 
 export default function Home() {
   const [sourceLang, setSourceLang] = useState('en');
   const [targetLang, setTargetLang] = useState('es');
   const [sourceText, setSourceText] = useState('');
   const [translatedText, setTranslatedText] = useState('');
-  const [isRecording, setIsRecording] = useState(false);
-  const [isTranscribing, setIsTranscribing] = useState(false);
   const [isTranslating, setIsTranslating] = useState(false);
-  const [isSpeaking, setIsSpeaking] = useState(false);
+  const [isTranscribing, setIsTranscribing] = useState(false);
   const [isClient, setIsClient] = useState(false);
-  const [question, setQuestion] = useState('');
-  const [answer, setAnswer] = useState('');
-  const [isAnswering, setIsAnswering] = useState(false);
-  const [hasMicPermission, setHasMicPermission] = useState<boolean | null>(null);
-  const [lastRecordingUrl, setLastRecordingUrl] = useState<string | null>(null);
-  const [isPlayingRecording, setIsPlayingRecording] = useState(false);
   const [savedPhrases, setSavedPhrases] = useState<SavedPhrase[]>([]);
 
-  // Client-side-only state
-  const [canShare, setCanShare] = useState(false);
-  const [hasSpeechSynthesis, setHasSpeechSynthesis] = useState(false);
-  const [hasMediaRecorder, setHasMediaRecorder] = useState(false);
-
   const { toast } = useToast();
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-  const audioChunksRef = useRef<Blob[]>([]);
-  const audioStreamRef = useRef<MediaStream | null>(null);
-  const audioPlaybackRef = useRef<HTMLAudioElement | null>(null);
-
 
   useEffect(() => {
     setIsClient(true);
     if (typeof window !== 'undefined') {
-      setCanShare(!!(navigator && navigator.share));
-      setHasSpeechSynthesis('speechSynthesis' in window);
-      setHasMediaRecorder('MediaRecorder' in window);
-
-      navigator.mediaDevices.getUserMedia({ audio: true })
-        .then(stream => {
-          setHasMicPermission(true);
-          stream.getTracks().forEach(track => track.stop());
-        })
-        .catch(() => {
-          setHasMicPermission(false);
-        });
-
       try {
         const storedPhrases = localStorage.getItem('savedPhrases');
         if (storedPhrases) {
@@ -135,199 +54,12 @@ export default function Home() {
     setIsTranslating(false);
   }, [sourceText, sourceLang, targetLang]);
   
-  const handleTranscription = async (audioBlob: Blob) => {
-    setIsTranscribing(true);
-    try {
-      const base64Audio = await blobToBase64(audioBlob);
-      const transcription = await transcribeAudio(base64Audio);
-      setSourceText(transcription);
-      // Removed auto-translation from here
-    } catch (error: any) {
-      console.error("Transcription failed on client", error);
-      toast({
-        variant: "destructive",
-        title: "Transcription Failed",
-        description: error.message || "Could not transcribe the audio. Please try again.",
-      });
-    } finally {
-      setIsTranscribing(false);
-    }
-  };
-
-  const handleStopRecording = useCallback(() => {
-    if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
-      mediaRecorderRef.current.stop();
-    }
-  }, []);
-
-  const blobToBase64 = (blob: Blob): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        const base64data = reader.result as string;
-        resolve(base64data);
-      };
-      reader.onerror = reject;
-      reader.readAsDataURL(blob);
-    });
-  };
-
-  const handleStartRecording = useCallback(async () => {
-    if (!hasMediaRecorder) {
-      toast({
-        variant: 'destructive',
-        title: 'Recording not supported',
-        description: 'Your browser does not support audio recording.',
-      });
-      return;
-    }
-    setLastRecordingUrl(null);
-    audioChunksRef.current = [];
-
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ 
-        audio: { 
-          channelCount: 1,
-          echoCancellation: true,
-          noiseSuppression: true,
-          autoGainControl: true,
-        }, 
-      });
-      audioStreamRef.current = stream;
-      setHasMicPermission(true);
-
-      const mimeTypes = [
-        'audio/webm;codecs=opus',
-        'audio/webm',
-        'audio/ogg;codecs=opus',
-      ];
-      const supportedMimeType = mimeTypes.find(type => MediaRecorder.isTypeSupported(type));
-
-      if (!supportedMimeType) {
-        toast({
-            variant: 'destructive',
-            title: 'Recording format not supported',
-            description: 'No supported audio format found for your browser.',
-        });
-        return;
-      }
-      
-      const mediaRecorder = new MediaRecorder(stream, { mimeType: supportedMimeType });
-      mediaRecorderRef.current = mediaRecorder;
-
-      mediaRecorder.ondataavailable = (event) => {
-        if (event.data.size > 0) {
-          audioChunksRef.current.push(event.data);
-        }
-      };
-
-      mediaRecorder.onstop = async () => {
-        const mimeType = mediaRecorderRef.current?.mimeType || 'audio/webm';
-        const audioBlob = new Blob(audioChunksRef.current, { type: mimeType });
-        
-        const audioUrl = URL.createObjectURL(audioBlob);
-        setLastRecordingUrl(audioUrl);
-        
-        audioChunksRef.current = [];
-        
-        if (audioStreamRef.current) {
-          audioStreamRef.current.getTracks().forEach(track => track.stop());
-          audioStreamRef.current = null;
-        }
-        setIsRecording(false);
-        await handleTranscription(audioBlob);
-      };
-      
-      mediaRecorder.start();
-      setIsRecording(true);
-    } catch (err) {
-      console.error('Error accessing microphone:', err);
-      setHasMicPermission(false);
-      toast({
-        variant: 'destructive',
-        title: 'Microphone Access Denied',
-        description: 'Please allow microphone access in your browser settings.',
-      });
-    }
-  }, [hasMediaRecorder, toast]);
-  
-  const handleMicClick = () => {
-    if (isRecording) {
-      handleStopRecording();
-    } else {
-      handleStartRecording();
-    }
-  };
-
-  const handlePlayRecording = () => {
-    if (lastRecordingUrl) {
-      if (audioPlaybackRef.current && !audioPlaybackRef.current.paused) {
-        audioPlaybackRef.current.pause();
-        audioPlaybackRef.current.currentTime = 0;
-        setIsPlayingRecording(false);
-      } else {
-        const audio = new Audio(lastRecordingUrl);
-        audio.play();
-        audio.onplay = () => setIsPlayingRecording(true);
-        audio.onpause = () => setIsPlayingRecording(false);
-        audio.onended = () => setIsPlayingRecording(false);
-        audio.onerror = (e) => { console.error("Audio playback error:", e); setIsPlayingRecording(false); };
-        audioPlaybackRef.current = audio;
-      }
-    }
-    return () => {
-      if (audioPlaybackRef.current) {
-        audioPlaybackRef.current.pause();
-        audioPlaybackRef.current = null;
-      }
-    };
-  };
-
   const handleSwapLanguages = () => {
     if(isTranslating || isTranscribing) return;
     setSourceLang(targetLang);
     setTargetLang(sourceLang);
     setSourceText(translatedText);
     setTranslatedText(''); 
-  };
-
-  const handleSpeak = () => {
-    if (!hasSpeechSynthesis || !translatedText.trim() || isSpeaking) return;
-    speechSynthesis.cancel();
-    const utterance = new SpeechSynthesisUtterance(translatedText);
-    utterance.lang = targetLang;
-    utterance.onstart = () => setIsSpeaking(true);
-    utterance.onend = () => setIsSpeaking(false);
-    utterance.onerror = () => setIsSpeaking(false);
-    speechSynthesis.speak(utterance);
-  };
-
-  const handleCopy = () => {
-    if (!translatedText) return;
-    navigator.clipboard.writeText(translatedText);
-    toast({ title: 'Copied to clipboard!' });
-  };
-
-  const handleShare = async () => {
-    if (canShare && translatedText) {
-      try {
-        await navigator.share({
-          title: 'AccuAI Translation',
-          text: translatedText,
-        });
-      } catch (error) {
-        console.error('Sharing failed', error);
-      }
-    }
-  };
-
-  const handleAskQuestion = async () => {
-    if (!question.trim() || !translatedText.trim()) return;
-    setIsAnswering(true);
-    setAnswer('');
-    const result = await answerQuestion(translatedText, question);
-    setAnswer(result);
-    setIsAnswering(false);
   };
   
   const handleSavePhrase = () => {
@@ -353,293 +85,71 @@ export default function Home() {
     localStorage.setItem('savedPhrases', JSON.stringify(updatedPhrases));
     toast({ title: 'Phrase removed.' });
   };
-  
-  const handleCommonPhraseClick = (phrase: string) => {
-    setSourceText(phrase);
-    setTranslatedText('');
-  };
 
-  const isUIBlocked = isTranslating || isTranscribing || isRecording;
-  const isCurrentPhraseSaved = savedPhrases.some(
-    p => p.sourceText === sourceText && p.translatedText === translatedText
-  );
+  const handleSelectPhrase = (phrase: SavedPhrase) => {
+    setSourceText(phrase.sourceText);
+    setTranslatedText(phrase.translatedText);
+    setSourceLang(phrase.sourceLang);
+    setTargetLang(phrase.targetLang);
+  };
+  
+  const isUIBlocked = isTranslating || isTranscribing;
 
   if (!isClient) {
-    return null;
+    return null; // or a loading skeleton
   }
 
   return (
-    <TooltipProvider>
-      <main className="flex min-h-screen w-full flex-col items-center gap-6 bg-background p-4 sm:p-6 lg:p-8">
-        <div className="flex flex-col items-center text-center">
-          <Logo />
-          <h1 className="text-4xl sm:text-5xl font-bold font-headline mt-4">AccuAI</h1>
-          <p className="text-muted-foreground mt-2">Your AI-Powered Speech Translator</p>
-        </div>
-        <Card className="w-full max-w-4xl shadow-2xl">
-          <CardHeader>
-             <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-              <Select value={sourceLang} onValueChange={setSourceLang} disabled={isUIBlocked}>
-                <SelectTrigger className="w-full sm:w-[180px]">
-                  <SelectValue placeholder="Source language" />
-                </SelectTrigger>
-                <SelectContent>
-                  {languages.map((lang) => (
-                    <SelectItem key={lang.value} value={lang.value}>
-                      {lang.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+    <main className="flex min-h-screen w-full flex-col items-center gap-6 bg-background p-4 sm:p-6 lg:p-8">
+      <div className="flex flex-col items-center text-center">
+        <Logo />
+        <h1 className="text-4xl sm:text-5xl font-bold font-headline mt-4">AccuAI</h1>
+        <p className="text-muted-foreground mt-2">Your AI-Powered Speech Translator</p>
+      </div>
 
-              <Button variant="ghost" size="icon" onClick={handleSwapLanguages} disabled={isUIBlocked}>
-                <ArrowRightLeft className="h-5 w-5" />
-              </Button>
-
-              <Select value={targetLang} onValueChange={setTargetLang} disabled={isUIBlocked}>
-                <SelectTrigger className="w-full sm:w-[180px]">
-                  <SelectValue placeholder="Target language" />
-                </SelectTrigger>
-                <SelectContent>
-                  {languages.map((lang) => (
-                    <SelectItem key={lang.value} value={lang.value}>
-                      {lang.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </CardHeader>
-          <CardContent className="grid md:grid-cols-2 gap-6">
-            <div className="relative flex flex-col gap-4">
-              <Textarea
-                placeholder="Type text to translate or use the microphone..."
-                value={sourceText}
-                onChange={(e) => setSourceText(e.target.value)}
-                className="min-h-[200px] text-base resize-none"
-                disabled={isUIBlocked}
-              />
-              {hasMicPermission === false && (
-                <p className="text-sm text-destructive -mt-2">Microphone access denied.</p>
-              )}
-               {(isTranscribing || isTranslating) && (
-                <div className="absolute inset-0 flex items-center justify-center bg-background/80 rounded-md">
-                   <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                   <p className="ml-2 text-lg">{isTranscribing ? 'Transcribing...' : 'Translating...'}</p>
-                </div>
-              )}
-              <div className="flex items-center justify-between gap-2">
-                <div className="flex items-center gap-2">
-                  <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button 
-                          size="icon"
-                          variant={isRecording ? 'destructive' : 'outline'}
-                          onClick={handleMicClick} 
-                          disabled={hasMicPermission === false || !hasMediaRecorder || isTranscribing}
-                        >
-                          {isRecording ? <Pause className="h-5 w-5" /> : <Mic className="h-5 w-5" />}
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p>{isRecording ? 'Stop recording' : 'Start recording'}</p>
-                      </TooltipContent>
-                  </Tooltip>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        size="icon"
-                        variant="outline"
-                        onClick={handlePlayRecording}
-                        disabled={!lastRecordingUrl || isRecording || isTranscribing}
-                      >
-                        {isPlayingRecording ? <Pause className="h-5 w-5" /> : <Play className="h-5 w-5" />}
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p>{!lastRecordingUrl ? "No recording to play" : isPlayingRecording ? "Pause recording" : "Play last recording"}</p>
-                    </TooltipContent>
-                  </Tooltip>
-                </div>
-                <Button onClick={() => handleTranslate()} disabled={!sourceText.trim() || isUIBlocked}>
-                  {isTranslating && !isTranscribing ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Translating...
-                    </>
-                  ) : (
-                    'Translate'
-                  )}
-                </Button>
-              </div>
-            </div>
-            <div className="relative flex flex-col gap-4">
-              <Textarea
-                placeholder="Translation"
-                value={translatedText}
-                readOnly
-                className="min-h-[200px] text-base resize-none bg-muted/50"
-              />
-              {isTranslating && !translatedText && !isTranscribing && (
-                <div className="absolute inset-0 flex items-center justify-center bg-background/80 rounded-md">
-                   <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                </div>
-              )}
-               <div className="flex items-center gap-2">
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button size="icon" variant="outline" onClick={handleSpeak} disabled={!translatedText || !hasSpeechSynthesis || isUIBlocked}>
-                      {isSpeaking ? <Pause className="h-5 w-5" /> : <Volume2 className="h-5 w-5" />}
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>{!hasSpeechSynthesis ? 'Text-to-speech not supported' : 'Listen to translation'}</p>
-                  </TooltipContent>
-                </Tooltip>
-                 <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button size="icon" variant="outline" onClick={handleCopy} disabled={!translatedText || isUIBlocked}>
-                      <Copy className="h-5 w-5" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>Copy translation</p>
-                  </TooltipContent>
-                </Tooltip>
-                {canShare && (
-                   <Tooltip>
-                    <TooltipTrigger asChild>
-                       <Button size="icon" variant="outline" onClick={handleShare} disabled={!translatedText || isUIBlocked}>
-                          <Share2 className="h-5 w-5" />
-                       </Button>
-                    </TooltipTrigger>
-                     <TooltipContent>
-                       <p>Share translation</p>
-                     </TooltipContent>
-                   </Tooltip>
-                )}
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button size="icon" variant="outline" onClick={handleSavePhrase} disabled={!translatedText || isCurrentPhraseSaved || isUIBlocked}>
-                      <Star className={`h-5 w-5 ${isCurrentPhraseSaved ? 'fill-yellow-400 text-yellow-500' : ''}`} />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>{isCurrentPhraseSaved ? 'Phrase already saved' : 'Save phrase'}</p>
-                  </TooltipContent>
-                </Tooltip>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+      <div className="w-full max-w-4xl flex flex-col gap-6">
+        <LanguageSelectors
+          sourceLang={sourceLang}
+          targetLang={targetLang}
+          setSourceLang={setSourceLang}
+          setTargetLang={setTargetLang}
+          handleSwapLanguages={handleSwapLanguages}
+          isUIBlocked={isUIBlocked}
+        />
         
-        <Card className="w-full max-w-4xl shadow-2xl">
-            <CardHeader>
-              <div className="flex items-center gap-2">
-                <MessageSquareQuote className="h-6 w-6 text-primary" />
-                <h2 className="text-2xl font-bold">Common Phrases</h2>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="flex flex-wrap gap-2">
-                {commonPhrases.map((phrase) => (
-                  <Button
-                    key={phrase}
-                    variant="outline"
-                    className="rounded-full"
-                    onClick={() => handleCommonPhraseClick(phrase)}
-                    disabled={isUIBlocked}
-                  >
-                    {phrase}
-                  </Button>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
+        <TranslationCard
+          sourceText={sourceText}
+          setSourceText={setSourceText}
+          translatedText={translatedText}
+          isTranslating={isTranslating}
+          isTranscribing={isTranscribing}
+          setIsTranscribing={setIsTranscribing}
+          handleTranslate={handleTranslate}
+          handleSavePhrase={handleSavePhrase}
+          isCurrentPhraseSaved={savedPhrases.some(
+            p => p.sourceText === sourceText && p.translatedText === translatedText
+          )}
+          isUIBlocked={isUIBlocked}
+        />
+        
+        <CommonPhrases
+          onPhraseClick={(phrase) => {
+            setSourceText(phrase);
+            setTranslatedText('');
+          }}
+          isUIBlocked={isUIBlocked}
+        />
 
-        {savedPhrases.length > 0 && (
-          <Card className="w-full max-w-4xl shadow-2xl">
-            <CardHeader>
-              <CardTitle className="text-2xl font-bold">Saved Phrases</CardTitle>
-            </CardHeader>
-            <CardContent className="flex flex-col gap-4">
-              {savedPhrases.map((phrase, index) => (
-                <div key={phrase.id}>
-                  <div className="flex justify-between items-start gap-4">
-                    <div className="flex-grow">
-                      <p className="text-sm text-muted-foreground">
-                        {languages.find(l => l.value === phrase.sourceLang)?.label}
-                      </p>
-                      <p className="font-semibold">{phrase.sourceText}</p>
-                      <p className="text-sm text-muted-foreground mt-2">
-                        {languages.find(l => l.value === phrase.targetLang)?.label}
-                      </p>
-                      <p>{phrase.translatedText}</p>
-                    </div>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button variant="ghost" size="icon" onClick={() => handleRemovePhrase(phrase.id)}>
-                          <Trash2 className="h-5 w-5 text-destructive" />
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p>Remove phrase</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  </div>
-                  {index < savedPhrases.length - 1 && <Separator className="mt-4" />}
-                </div>
-              ))}
-            </CardContent>
-          </Card>
-        )}
+        <SavedPhrases 
+          savedPhrases={savedPhrases}
+          onRemovePhrase={handleRemovePhrase}
+          onSelectPhrase={handleSelectPhrase}
+        />
 
-        {translatedText && (
-          <Card className="w-full max-w-4xl shadow-2xl">
-            <CardHeader>
-              <div className="flex items-center gap-2">
-                <HelpCircle className="h-6 w-6 text-primary" />
-                <h2 className="text-2xl font-bold">Ask about the Translation</h2>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="flex flex-col gap-4">
-                <div>
-                  <Label htmlFor="question-input">Your Question</Label>
-                  <Input
-                    id="question-input"
-                    placeholder="e.g., Explain this in simpler terms."
-                    value={question}
-                    onChange={(e) => setQuestion(e.target.value)}
-                    disabled={isAnswering}
-                  />
-                </div>
-                <Button onClick={handleAskQuestion} disabled={!question.trim() || isAnswering}>
-                  {isAnswering ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Getting Answer...
-                    </>
-                  ) : (
-                    'Ask Gemini'
-                  )}
-                </Button>
-                {isAnswering && !answer && (
-                   <div className="flex items-center justify-center p-8">
-                     <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                   </div>
-                )}
-                {answer && (
-                  <div className="p-4 bg-muted/50 rounded-md border">
-                    <p className="font-semibold mb-2">Answer:</p>
-                    <div className="prose prose-sm max-w-none">{answer}</div>
-                  </div>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        )}
-      </main>
-    </TooltipProvider>
+        <AskAboutTranslation 
+          translatedText={translatedText}
+        />
+      </div>
+    </main>
   );
 }
