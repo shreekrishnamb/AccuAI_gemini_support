@@ -3,7 +3,7 @@
 
 import { useTranslation } from '@/hooks/use-translation';
 import { LanguageSelectors } from '@/components/app/LanguageSelectors';
-import { TranslationCard } from '@/components/app/TranslationCard';
+import { TranslationCard } from '@/components/app/Translation-card';
 import { CommonPhrases } from '@/components/app/CommonPhrases';
 import { SavedPhrases } from '@/components/app/SavedPhrases';
 import { AskAboutTranslation } from '@/components/app/AskAboutTranslation';

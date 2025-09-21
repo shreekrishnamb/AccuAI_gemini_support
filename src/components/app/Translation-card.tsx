@@ -10,6 +10,7 @@ import {
   Play,
   Share2,
   Star,
+  Sparkles,
   Volume2,
   X,
 } from 'lucide-react';
@@ -425,5 +426,3 @@ export function TranslationCard({
     </TooltipProvider>
   );
 }
-
-    
