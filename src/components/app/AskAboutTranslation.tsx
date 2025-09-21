@@ -3,11 +3,20 @@
 
 import { useState } from 'react';
 import { HelpCircle, Loader2 } from 'lucide-react';
-import { Card, CardHeader, CardContent } from '@/components/ui/card';
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from '@/components/ui/sheet';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { answerQuestion } from '@/app/actions';
+import { Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
+
 
 interface AskAboutTranslationProps {
   translatedText: string;
@@ -17,6 +26,7 @@ export function AskAboutTranslation({ translatedText }: AskAboutTranslationProps
   const [question, setQuestion] = useState('');
   const [answer, setAnswer] = useState('');
   const [isAnswering, setIsAnswering] = useState(false);
+  const [isOpen, setIsOpen] = useState(false);
 
   const handleAskQuestion = async () => {
     if (!question.trim() || !translatedText.trim()) return;
@@ -26,23 +36,47 @@ export function AskAboutTranslation({ translatedText }: AskAboutTranslationProps
     setAnswer(result);
     setIsAnswering(false);
   };
-
-  if (!translatedText) {
-    return null;
+  
+  const handleOpenChange = (open: boolean) => {
+    setIsOpen(open);
+    if (!open) {
+      setQuestion('');
+      setAnswer('');
+      setIsAnswering(false);
+    }
   }
 
   return (
-    <Card className="w-full shadow-2xl">
-      <CardHeader>
-        <div className="flex items-center gap-2">
-          <HelpCircle className="h-6 w-6 text-primary" />
-          <h2 className="text-2xl font-bold">Ask about the Translation</h2>
-        </div>
-      </CardHeader>
-      <CardContent>
-        <div className="flex flex-col gap-4">
+    <Sheet open={isOpen} onOpenChange={handleOpenChange}>
+        <TooltipProvider>
+            <Tooltip>
+                <TooltipTrigger asChild>
+                    <SheetTrigger asChild>
+                        <Button
+                            size="icon"
+                            variant="outline"
+                            disabled={!translatedText}
+                        >
+                            <HelpCircle className="h-5 w-5" />
+                        </Button>
+                    </SheetTrigger>
+                </TooltipTrigger>
+                <TooltipContent>
+                    <p>Ask about the translation</p>
+                </TooltipContent>
+            </Tooltip>
+        </TooltipProvider>
+
+      <SheetContent className="sm:max-w-lg">
+        <SheetHeader>
+          <SheetTitle>Ask about the Translation</SheetTitle>
+          <SheetDescription>
+            Ask Gemini a question about the translated text.
+          </SheetDescription>
+        </SheetHeader>
+        <div className="flex flex-col gap-4 py-4">
           <div>
-            <Label htmlFor="question-input">Your Question</Label>
+            <Label htmlFor="question-input" className="mb-2">Your Question</Label>
             <Input
               id="question-input"
               placeholder="e.g., Explain this in simpler terms."
@@ -73,7 +107,7 @@ export function AskAboutTranslation({ translatedText }: AskAboutTranslationProps
             </div>
           )}
         </div>
-      </CardContent>
-    </Card>
+      </SheetContent>
+    </Sheet>
   );
 }

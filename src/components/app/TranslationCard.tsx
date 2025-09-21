@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, type ReactNode } from 'react';
 import {
   Copy,
   Loader2,
@@ -31,10 +31,11 @@ interface TranslationCardProps {
   isTranslating: boolean;
   isTranscribing: boolean;
   setIsTranscribing: (isTranscribing: boolean) => void;
-  handleTranslate: () => void;
+  handleTranslate: (text?: string) => void;
   handleSavePhrase: () => void;
   isCurrentPhraseSaved: boolean;
   isUIBlocked: boolean;
+  children?: ReactNode;
 }
 
 export function TranslationCard({
@@ -48,6 +49,7 @@ export function TranslationCard({
   handleSavePhrase,
   isCurrentPhraseSaved,
   isUIBlocked,
+  children
 }: TranslationCardProps) {
   const [isRecording, setIsRecording] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
@@ -83,7 +85,7 @@ export function TranslationCard({
     }
   }, []);
 
-  const handleTranscription = async (audioBlob: Blob) => {
+  const handleTranscription = useCallback(async (audioBlob: Blob) => {
     setIsTranscribing(true);
     try {
       const base64Audio = await blobToBase64(audioBlob);
@@ -99,7 +101,8 @@ export function TranslationCard({
     } finally {
       setIsTranscribing(false);
     }
-  };
+  }, [setSourceText, setIsTranscribing, toast]);
+
 
   const handleStopRecording = useCallback(() => {
     if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
@@ -196,7 +199,7 @@ export function TranslationCard({
         description: 'Please allow microphone access in your browser settings.',
       });
     }
-  }, [hasMediaRecorder, toast, setIsTranscribing, setSourceText]);
+  }, [hasMediaRecorder, toast, handleTranscription]);
   
   const handleMicClick = () => {
     if (isRecording) {
@@ -375,6 +378,7 @@ export function TranslationCard({
                   <p>{isCurrentPhraseSaved ? 'Phrase already saved' : 'Save phrase'}</p>
                 </TooltipContent>
               </Tooltip>
+              {children}
             </div>
           </div>
         </CardContent>

@@ -130,12 +130,15 @@ export default function Home() {
             p => p.sourceText === sourceText && p.translatedText === translatedText
           )}
           isUIBlocked={isUIBlocked}
-        />
+        >
+          <AskAboutTranslation translatedText={translatedText} />
+        </TranslationCard>
         
         <CommonPhrases
           onPhraseClick={(phrase) => {
             setSourceText(phrase);
             setTranslatedText('');
+            handleTranslate(phrase);
           }}
           isUIBlocked={isUIBlocked}
         />
@@ -146,9 +149,6 @@ export default function Home() {
           onSelectPhrase={handleSelectPhrase}
         />
 
-        <AskAboutTranslation 
-          translatedText={translatedText}
-        />
       </div>
     </main>
   );
