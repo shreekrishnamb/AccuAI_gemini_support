@@ -26,7 +26,7 @@ const techStack = [
 export default function AboutPage() {
   return (
     <AppLayout>
-      <div className="flex flex-col gap-8">
+      <div className="max-w-4xl mx-auto flex flex-col gap-8">
         <div className="flex justify-start">
           <Button asChild variant="outline">
             <Link href="/">
@@ -42,12 +42,11 @@ export default function AboutPage() {
           </p>
         </div>
 
-        <Card className="shadow-lg">
-          <CardContent className="pt-6 text-base text-muted-foreground space-y-6">
-            <p>
+        <div className="prose prose-lg dark:prose-invert max-w-none mx-auto text-foreground/90 space-y-6">
+           <p>
               AccuAI is a demonstration project built to showcase the capabilities of modern AI in the realm of real-time language translation. Our goal is to provide a tool that is not only accurate but also intuitive and helpful, allowing users to understand the context and nuances of language, not just the words. This project serves as a practical example for academic purposes, illustrating a full-stack application built with a modern, AI-first technology stack.
             </p>
-             <div className="space-y-2">
+             <div className="space-y-2 !mt-10">
                 <h3 className="text-xl font-semibold text-foreground flex items-center gap-2">
                     <ShieldCheck className="h-6 w-6 text-primary" />
                     Our Commitment to Privacy
@@ -56,10 +55,9 @@ export default function AboutPage() {
                   We believe in privacy by design. AccuAI does not require you to create an account or log in. All AI processing is done anonymously, and your translation history is not stored on our servers. Any phrases you choose to save are stored locally on your own device, ensuring that you are the only one with access to them.
                 </p>
             </div>
-          </CardContent>
-        </Card>
+        </div>
         
-        <div className="text-center">
+        <div className="text-center pt-8">
             <h2 className="text-3xl font-bold tracking-tight">Technology Stack</h2>
             <p className="mt-2 text-md text-muted-foreground">The core components that power AccuAI.</p>
         </div>
