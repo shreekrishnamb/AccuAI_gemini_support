@@ -335,51 +335,54 @@ export function TranslationCard({
                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
               </div>
             )}
-             <div className="flex items-center gap-2">
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button size="icon" variant="outline" onClick={handleSpeak} disabled={!translatedText || !hasSpeechSynthesis || isUIBlocked}>
-                    {isSpeaking ? <Pause className="h-5 w-5" /> : <Volume2 className="h-5 w-5" />}
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>{!hasSpeechSynthesis ? 'Text-to-speech not supported' : 'Listen to translation'}</p>
-                </TooltipContent>
-              </Tooltip>
-               <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button size="icon" variant="outline" onClick={handleCopy} disabled={!translatedText || isUIBlocked}>
-                    <Copy className="h-5 w-5" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>Copy translation</p>
-                </TooltipContent>
-              </Tooltip>
-              {canShare && (
-                 <Tooltip>
+             <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button size="icon" variant="outline" onClick={handleSpeak} disabled={!translatedText || !hasSpeechSynthesis || isUIBlocked}>
+                        {isSpeaking ? <Pause className="h-5 w-5" /> : <Volume2 className="h-5 w-5" />}
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>{!hasSpeechSynthesis ? 'Text-to-speech not supported' : 'Listen to translation'}</p>
+                    </TooltipContent>
+                  </Tooltip>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button size="icon" variant="outline" onClick={handleCopy} disabled={!translatedText || isUIBlocked}>
+                        <Copy className="h-5 w-5" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Copy translation</p>
+                    </TooltipContent>
+                  </Tooltip>
+                  {canShare && (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button size="icon" variant="outline" onClick={handleShare} disabled={!translatedText || isUIBlocked}>
+                            <Share2 className="h-5 w-5" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Share translation</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  )}
+                  {children}
+                </div>
+
+                <Tooltip>
                   <TooltipTrigger asChild>
-                     <Button size="icon" variant="outline" onClick={handleShare} disabled={!translatedText || isUIBlocked}>
-                        <Share2 className="h-5 w-5" />
-                     </Button>
+                    <Button size="icon" variant="outline" onClick={handleSavePhrase} disabled={!translatedText || isCurrentPhraseSaved || isUIBlocked}>
+                      <Star className={`h-5 w-5 ${isCurrentPhraseSaved ? 'fill-yellow-400 text-yellow-500' : ''}`} />
+                    </Button>
                   </TooltipTrigger>
-                   <TooltipContent>
-                     <p>Share translation</p>
-                   </TooltipContent>
-                 </Tooltip>
-              )}
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button size="icon" variant="outline" onClick={handleSavePhrase} disabled={!translatedText || isCurrentPhraseSaved || isUIBlocked}>
-                    <Star className={`h-5 w-5 ${isCurrentPhraseSaved ? 'fill-yellow-400 text-yellow-500' : ''}`} />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>{isCurrentPhraseSaved ? 'Phrase already saved' : 'Save phrase'}</p>
-                </TooltipContent>
-              </Tooltip>
-              {children}
-            </div>
+                  <TooltipContent>
+                    <p>{isCurrentPhraseSaved ? 'Phrase already saved' : 'Save phrase'}</p>
+                  </TooltipContent>
+                </Tooltip>
+              </div>
           </div>
         </CardContent>
       </Card>

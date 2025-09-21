@@ -54,7 +54,7 @@ export function AskAboutTranslation({ translatedText }: AskAboutTranslationProps
                     <SheetTrigger asChild>
                         <Button
                             size="icon"
-                            variant="outline"
+                            className="ai-button"
                             disabled={!translatedText}
                         >
                             <HelpCircle className="h-5 w-5" />
