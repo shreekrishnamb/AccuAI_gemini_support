@@ -4,29 +4,28 @@ import { improveTranslationQuality } from '@/ai/flows/improve-translation-qualit
 import { suggestTranslationLanguages } from '@/ai/flows/suggest-translation-languages';
 import { answerQuestionAboutText } from '@/ai/flows/answer-question-about-text';
 import { transcribeAudio as transcribeAudioFlow } from '@/ai/flows/transcribe-audio';
-
+import { translateText as translateTextFlow } from '@/ai/flows/translate-text';
 
 export async function translateText(
   text: string,
   sourceLanguage: string,
   targetLanguage: string
-): Promise<string> {
+): Promise<{ translation: string }> {
   if (!text) {
-    return '';
+    return { translation: '' };
   }
 
   try {
-    const result = await improveTranslationQuality({
-      originalText: text,
-      translatedText: '',
-      userFeedback: 'Please translate this text.',
-      sourceLanguage: sourceLanguage,
-      targetLanguage: targetLanguage,
+    const result = await translateTextFlow({
+      text,
+      sourceLang: sourceLanguage,
+      targetLang: targetLanguage,
     });
-    return result.improvedTranslation;
+    return { translation: result.translation };
   } catch (error) {
     console.error('Translation failed:', error);
-    return 'Error: Could not translate text.';
+    // In case of an error, re-throw to be handled by the client
+    throw new Error('Could not translate text.');
   }
 }
 
