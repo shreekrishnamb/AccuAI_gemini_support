@@ -8,6 +8,7 @@ import {
   HelpCircle,
   Loader2,
   Mic,
+  MessageSquareQuote,
   Pause,
   Play,
   Share2,
@@ -51,6 +52,17 @@ interface SavedPhrase {
   sourceLang: string;
   targetLang: string;
 }
+
+const commonPhrases = [
+  "Hello, how are you?",
+  "Thank you so much.",
+  "Where is the nearest restroom?",
+  "How much does this cost?",
+  "I need help, please.",
+  "Good morning!",
+  "Can you speak slower?",
+  "I don't understand.",
+];
 
 export default function Home() {
   const [sourceLang, setSourceLang] = useState('en');
@@ -125,12 +137,11 @@ export default function Home() {
   
   const handleTranscription = async (audioBlob: Blob) => {
     setIsTranscribing(true);
-    console.log('handleTranscription called with blob:', audioBlob);
     try {
       const base64Audio = await blobToBase64(audioBlob);
-      console.log('Audio converted to Base64, length:', base64Audio.length);
       const transcription = await transcribeAudio(base64Audio);
       setSourceText(transcription);
+      // Removed auto-translation from here
     } catch (error: any) {
       console.error("Transcription failed on client", error);
       toast({
@@ -342,6 +353,11 @@ export default function Home() {
     localStorage.setItem('savedPhrases', JSON.stringify(updatedPhrases));
     toast({ title: 'Phrase removed.' });
   };
+  
+  const handleCommonPhraseClick = (phrase: string) => {
+    setSourceText(phrase);
+    setTranslatedText('');
+  };
 
   const isUIBlocked = isTranslating || isTranscribing || isRecording;
   const isCurrentPhraseSaved = savedPhrases.some(
@@ -516,6 +532,30 @@ export default function Home() {
             </div>
           </CardContent>
         </Card>
+        
+        <Card className="w-full max-w-4xl shadow-2xl">
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <MessageSquareQuote className="h-6 w-6 text-primary" />
+                <h2 className="text-2xl font-bold">Common Phrases</h2>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="flex flex-wrap gap-2">
+                {commonPhrases.map((phrase) => (
+                  <Button
+                    key={phrase}
+                    variant="outline"
+                    className="rounded-full"
+                    onClick={() => handleCommonPhraseClick(phrase)}
+                    disabled={isUIBlocked}
+                  >
+                    {phrase}
+                  </Button>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
 
         {savedPhrases.length > 0 && (
           <Card className="w-full max-w-4xl shadow-2xl">
@@ -603,6 +643,3 @@ export default function Home() {
     </TooltipProvider>
   );
 }
-
-
-    
