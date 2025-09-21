@@ -1,12 +1,7 @@
 
 "use client";
 
-import { useState, useEffect, useCallback } from 'react';
-import { useToast } from '@/hooks/use-toast';
-import { languages } from '@/lib/languages';
-import { translateText, detectLanguage } from '@/app/actions';
-import { SavedPhrase } from '@/lib/types';
-
+import { useTranslation } from '@/hooks/use-translation';
 import { LanguageSelectors } from '@/components/app/LanguageSelectors';
 import { TranslationCard } from '@/components/app/TranslationCard';
 import { CommonPhrases } from '@/components/app/CommonPhrases';
@@ -17,83 +12,26 @@ import Link from 'next/link';
 import { Home } from 'lucide-react';
 
 export default function TranslatePage() {
-  const [sourceLang, setSourceLang] = useState('en');
-  const [targetLang, setTargetLang] = useState('es');
-  const [sourceText, setSourceText] = useState('');
-  const [translatedText, setTranslatedText] = useState('');
-  const [isTranslating, setIsTranslating] = useState(false);
-  const [isTranscribing, setIsTranscribing] = useState(false);
-  const [isClient, setIsClient] = useState(false);
-  const [savedPhrases, setSavedPhrases] = useState<SavedPhrase[]>([]);
-
-  const { toast } = useToast();
-
-  useEffect(() => {
-    setIsClient(true);
-    if (typeof window !== 'undefined') {
-      try {
-        const storedPhrases = localStorage.getItem('savedPhrases');
-        if (storedPhrases) {
-          setSavedPhrases(JSON.parse(storedPhrases));
-        }
-      } catch (error) {
-        console.error("Failed to load saved phrases:", error);
-      }
-    }
-  }, []);
-
-  const handleTranslate = useCallback(async (textToTranslate?: string) => {
-    const text = textToTranslate || sourceText;
-    if (!text.trim()) return;
-    setIsTranslating(true);
-    setTranslatedText('');
-    const detected = await detectLanguage(text);
-    if (detected && languages.some(l => l.value.startsWith(detected))) {
-      setSourceLang(detected);
-    }
-    const { translation } = await translateText(text, detected || sourceLang, targetLang);
-    setTranslatedText(translation);
-    setIsTranslating(false);
-  }, [sourceText, sourceLang, targetLang]);
-  
-  const handleSwapLanguages = () => {
-    if(isTranslating || isTranscribing) return;
-    setSourceLang(targetLang);
-    setTargetLang(sourceLang);
-    setSourceText(translatedText);
-    setTranslatedText(''); 
-  };
-  
-  const handleSavePhrase = () => {
-    if (!sourceText.trim() || !translatedText.trim()) return;
-
-    const newPhrase: SavedPhrase = {
-      id: new Date().toISOString(),
-      sourceText,
-      translatedText,
-      sourceLang,
-      targetLang,
-    };
-    
-    const updatedPhrases = [...savedPhrases, newPhrase];
-    setSavedPhrases(updatedPhrases);
-    localStorage.setItem('savedPhrases', JSON.stringify(updatedPhrases));
-    toast({ title: 'Phrase saved!' });
-  };
-
-  const handleRemovePhrase = (id: string) => {
-    const updatedPhrases = savedPhrases.filter(p => p.id !== id);
-    setSavedPhrases(updatedPhrases);
-    localStorage.setItem('savedPhrases', JSON.stringify(updatedPhrases));
-    toast({ title: 'Phrase removed.' });
-  };
-
-  const handleSelectPhrase = (phrase: SavedPhrase) => {
-    setSourceText(phrase.sourceText);
-    setTranslatedText(phrase.translatedText);
-    setSourceLang(phrase.sourceLang);
-    setTargetLang(phrase.targetLang);
-  };
+  const {
+    sourceLang,
+    targetLang,
+    sourceText,
+    translatedText,
+    isTranslating,
+    isTranscribing,
+    isClient,
+    savedPhrases,
+    isCurrentPhraseSaved,
+    setSourceLang,
+    setTargetLang,
+    setSourceText,
+    setIsTranscribing,
+    handleTranslate,
+    handleSwapLanguages,
+    handleSavePhrase,
+    handleRemovePhrase,
+    handleSelectPhrase,
+  } = useTranslation();
   
   const isUIBlocked = isTranslating || isTranscribing;
 
@@ -130,9 +68,7 @@ export default function TranslatePage() {
           setIsTranscribing={setIsTranscribing}
           handleTranslate={handleTranslate}
           handleSavePhrase={handleSavePhrase}
-          isCurrentPhraseSaved={savedPhrases.some(
-            p => p.sourceText === sourceText && p.translatedText === translatedText
-          )}
+          isCurrentPhraseSaved={isCurrentPhraseSaved}
           isUIBlocked={isUIBlocked}
           sourceLang={sourceLang}
           targetLang={targetLang}
@@ -143,7 +79,6 @@ export default function TranslatePage() {
         <CommonPhrases
           onPhraseClick={(phrase) => {
             setSourceText(phrase);
-            setTranslatedText('');
             handleTranslate(phrase);
           }}
           isUIBlocked={isUIBlocked}
