@@ -4,7 +4,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { languages } from '@/lib/languages';
-import { translateText, detectLanguage, transcribeAudio } from '@/app/actions';
+import { translateText, detectLanguage } from '@/app/actions';
 import { SavedPhrase } from '@/lib/types';
 
 import { LanguageSelectors } from '@/components/app/LanguageSelectors';
@@ -12,6 +12,9 @@ import { TranslationCard } from '@/components/app/TranslationCard';
 import { CommonPhrases } from '@/components/app/CommonPhrases';
 import { SavedPhrases } from '@/components/app/SavedPhrases';
 import { AskAboutTranslation } from '@/components/app/AskAboutTranslation';
+import { Button } from '@/components/ui/button';
+import Link from 'next/link';
+import { Home } from 'lucide-react';
 
 export default function TranslatePage() {
   const [sourceLang, setSourceLang] = useState('en');
@@ -48,7 +51,7 @@ export default function TranslatePage() {
     if (detected && languages.some(l => l.value.startsWith(detected))) {
       setSourceLang(detected);
     }
-    const translation = await translateText(text, detected || sourceLang, targetLang);
+    const { translation } = await translateText(text, detected || sourceLang, targetLang);
     setTranslatedText(translation);
     setIsTranslating(false);
   }, [sourceText, sourceLang, targetLang]);
@@ -100,6 +103,14 @@ export default function TranslatePage() {
 
   return (
     <div className="flex w-full flex-col items-center gap-6">
+        <div className="w-full max-w-4xl flex justify-start">
+            <Button asChild variant="outline">
+                <Link href="/">
+                    <Home className="mr-2 h-4 w-4" />
+                    Back to Home
+                </Link>
+            </Button>
+        </div>
       <div className="w-full max-w-4xl flex flex-col gap-6">
         <LanguageSelectors
           sourceLang={sourceLang}

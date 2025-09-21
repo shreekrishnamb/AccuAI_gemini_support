@@ -1,7 +1,7 @@
 
 import { Button } from "@/components/ui/button";
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
-import { Languages, Book, BotMessageSquare } from "lucide-react";
+import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
+import { Languages, Book, BotMessageSquare, Mail } from "lucide-react";
 import Link from "next/link";
 
 export default function DashboardPage() {
@@ -50,43 +50,19 @@ export default function DashboardPage() {
         <Card className="shadow-lg hover:shadow-xl transition-shadow">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Book className="text-primary" />
-              Language Blog
+              <Mail className="text-primary" />
+              Contact Us
             </CardTitle>
             <CardDescription>
-              Read our latest articles about AI, language, and culture.
+              Have questions or feedback? We'd love to hear from you.
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <Link href="/blog">
-              <Button className="w-full" variant="outline">Visit Blog</Button>
-            </Link>
+             <a href="mailto:contact@accuai.com">
+                <Button className="w-full" variant="outline">Get in Touch</Button>
+            </a>
           </CardContent>
         </Card>
-      </div>
-
-      <div className="mt-8">
-          <h2 className="text-2xl font-bold text-center mb-4">Usage Statistics (Dummy Data)</h2>
-          <div className="grid gap-4 md:grid-cols-3">
-              <Card>
-                  <CardHeader>
-                      <CardTitle>Translations Today</CardTitle>
-                      <CardDescription className="text-4xl font-bold text-primary">1,204</CardDescription>
-                  </CardHeader>
-              </Card>
-               <Card>
-                  <CardHeader>
-                      <CardTitle>Phrases Saved</CardTitle>
-                      <CardDescription className="text-4xl font-bold text-primary">88</CardDescription>
-                  </CardHeader>
-              </Card>
-               <Card>
-                  <CardHeader>
-                      <CardTitle>Most Used Language</CardTitle>
-                      <CardDescription className="text-4xl font-bold text-primary">Spanish</CardDescription>
-                  </CardHeader>
-              </Card>
-          </div>
       </div>
     </div>
   )
