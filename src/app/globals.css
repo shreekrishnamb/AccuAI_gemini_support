@@ -91,7 +91,7 @@ body {
   .ai-button {
     @apply text-white;
     background-size: 200% auto;
-    background-image: linear-gradient(to right, #8A2BE2 0%, #4169E1 50%, #8A2BE2 100%);
+    background-image: linear-gradient(to right, #ff8c00 0%, #ff0080 50%, #ff8c00 100%);
     transition: background-position 0.5s ease;
   }
   .ai-button:hover {
