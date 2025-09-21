@@ -16,7 +16,14 @@ import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { answerQuestion } from '@/app/actions';
 import { Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
+import { Separator } from '@/components/ui/separator';
 
+const suggestedQuestions = [
+  "Explain this in simpler terms.",
+  "Is this a formal or informal translation?",
+  "Provide a few alternative ways to say this.",
+  "What is the cultural context of this phrase?",
+];
 
 interface AskAboutTranslationProps {
   translatedText: string;
@@ -45,6 +52,10 @@ export function AskAboutTranslation({ translatedText }: AskAboutTranslationProps
       setIsAnswering(false);
     }
   }
+
+  const handleSuggestionClick = (suggestion: string) => {
+    setQuestion(suggestion);
+  };
 
   return (
     <Sheet open={isOpen} onOpenChange={handleOpenChange}>
@@ -106,6 +117,27 @@ export function AskAboutTranslation({ translatedText }: AskAboutTranslationProps
               <div className="prose prose-sm max-w-none">{answer}</div>
             </div>
           )}
+
+          <Separator className="my-4" />
+
+          <div>
+            <h3 className="mb-3 font-semibold">Suggestions</h3>
+            <div className="flex flex-wrap gap-2">
+              {suggestedQuestions.map((q) => (
+                <Button
+                  key={q}
+                  variant="outline"
+                  size="sm"
+                  className="rounded-full"
+                  onClick={() => handleSuggestionClick(q)}
+                  disabled={isAnswering}
+                >
+                  {q}
+                </Button>
+              ))}
+            </div>
+          </div>
+
         </div>
       </SheetContent>
     </Sheet>
