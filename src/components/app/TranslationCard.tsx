@@ -256,7 +256,9 @@ export function TranslationCard({
           text: translatedText,
         });
       } catch (error) {
-        console.error('Sharing failed', error);
+        // The user might have cancelled the share sheet, or the browser might have blocked it.
+        // We can log this for debugging but avoid showing a disruptive error to the user.
+        console.error('Sharing failed or was cancelled:', error);
       }
     }
   };
