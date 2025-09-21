@@ -2,7 +2,7 @@
 "use client";
 
 import { useState } from 'react';
-import { HelpCircle, Loader2 } from 'lucide-react';
+import { Sparkles, Loader2 } from 'lucide-react';
 import {
   Sheet,
   SheetContent,
@@ -71,12 +71,12 @@ export function AskAboutTranslation({ translatedText }: AskAboutTranslationProps
                             className="ai-button"
                             disabled={!translatedText}
                         >
-                            <HelpCircle className="h-5 w-5" />
+                            <Sparkles className="h-5 w-5" />
                         </Button>
                     </SheetTrigger>
                 </TooltipTrigger>
                 <TooltipContent>
-                    <p>Ask about the translation</p>
+                    <p>Ask AI about the translation</p>
                 </TooltipContent>
             </Tooltip>
         </TooltipProvider>
