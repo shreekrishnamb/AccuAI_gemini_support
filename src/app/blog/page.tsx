@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/dialog";
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
+import Image from "next/image";
 import AppLayout from "../(app)/layout";
 
 const blogPosts = [
@@ -26,19 +27,25 @@ const blogPosts = [
     title: "The Power of AI in Real-Time Translation",
     date: "October 26, 2023",
     excerpt: "Artificial intelligence is revolutionizing how we communicate across languages. Explore the technology behind instant speech and text translation...",
-    content: "Artificial intelligence is at the heart of modern translation services. Unlike older rule-based systems, AI models like Google's Gemini are trained on vast amounts of text and can understand the nuances of language, context, and intent. This allows for translations that are not only grammatically correct but also culturally appropriate. Our app leverages these capabilities to provide real-time feedback and translations, making cross-lingual communication more seamless than ever before."
+    content: "Artificial intelligence is at the heart of modern translation services. Unlike older rule-based systems that followed rigid grammatical structures, modern AI models like Google's Gemini are built on neural networks. These networks are trained on vast amounts of multilingual text and can understand the nuances of language, context, and intent. This allows for translations that are not only grammatically correct but also culturally appropriate and natural-sounding. Our app leverages these capabilities to provide real-time feedback and translations, making cross-lingual communication more seamless and effective than ever before. The model can even detect the source language automatically, which simplifies the user experience significantly.",
+    imageUrl: "https://picsum.photos/seed/ai-brain/600/400",
+    imageHint: "AI brain",
   },
   {
-    title: "5 Common Pitfalls to Avoid in Machine Translation",
+    title: "5 Common Pitfalls in Machine Translation (and How to Avoid Them)",
     date: "October 20, 2023",
     excerpt: "While powerful, machine translation isn't perfect. Here are five common mistakes to look out for and how to correct them for better accuracy.",
-    content: "Machine translation is a powerful tool, but it's important to be aware of its limitations. Common pitfalls include: 1) Literal translations that miss idiomatic expressions. 2) Incorrectly handling slang or informal language. 3) Misinterpreting context, leading to ambiguity. 4) Grammatical errors in complex sentences. 5) Lack of cultural nuance. By being mindful of these issues and using AI tools to ask for clarification, you can achieve much higher accuracy."
+    content: "Machine translation is a powerful tool, but it's important to be aware of its limitations to avoid misunderstandings. Common pitfalls include: 1) Literal translations that completely miss idiomatic expressions (e.g., translating 'it's raining cats and dogs' literally). 2) Incorrectly handling slang or informal language, which can lead to awkward or nonsensical output. 3) Misinterpreting context, causing ambiguity, especially with words that have multiple meanings. 4) Grammatical errors in complex sentences with multiple clauses. 5) A lack of cultural nuance, which can make a translation socially awkward or even offensive. By being mindful of these issues and using AI tools like AccuAI to ask for clarification or alternative phrasings, you can achieve much higher accuracy and more effective communication.",
+    imageUrl: "https://picsum.photos/seed/translation-error/600/400",
+    imageHint: "translation error",
   },
   {
     title: "Understanding Cultural Nuances in Language",
     date: "October 15, 2023",
     excerpt: "Translation is more than just words. It's about conveying meaning, which is deeply tied to culture. Let's dive into the importance of cultural context.",
-    content: "Effective communication goes beyond simply swapping words from one language to another. Culture shapes how we express ourselves, from formal address to humor and figures of speech. A direct translation might be grammatically correct but socially awkward or even offensive. That's why AccuAI includes features to ask about the context of a translation, helping you understand not just what is being said, but what is truly meant."
+    content: "Effective communication goes beyond simply swapping words from one language to another. Culture shapes how we express ourselves, from formal and informal modes of address (like 'tú' vs. 'usted' in Spanish) to humor, sarcasm, and figures of speech. A direct translation might be grammatically correct but could be socially inappropriate or fail to capture the intended tone. For instance, a friendly joke in one culture might not land the same way in another. That's why AccuAI includes the 'Ask about the translation' feature. It empowers you to understand not just *what* is being said, but *how* it's being said and *what is truly meant* within a given cultural context.",
+    imageUrl: "https://picsum.photos/seed/culture-flags/600/400",
+    imageHint: "culture flags",
   },
 ];
 
@@ -79,8 +86,16 @@ export default function BlogPage() {
                       <DialogTitle className="text-2xl">{post.title}</DialogTitle>
                       <DialogDescription>{post.date}</DialogDescription>
                     </DialogHeader>
-                    <div className="prose max-w-none prose-sm sm:prose-base">
-                      {post.content}
+                    <div className="prose max-w-none prose-sm sm:prose-base mt-4">
+                      <Image 
+                        src={post.imageUrl} 
+                        alt={post.title} 
+                        width={600} 
+                        height={400} 
+                        className="rounded-lg mb-4"
+                        data-ai-hint={post.imageHint}
+                      />
+                      <p>{post.content}</p>
                     </div>
                   </DialogContent>
                 </Dialog>
