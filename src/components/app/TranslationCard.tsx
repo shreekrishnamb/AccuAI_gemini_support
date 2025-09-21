@@ -375,19 +375,22 @@ export function TranslationCard({
                       </TooltipContent>
                     </Tooltip>
                   )}
-                  {children}
+                  
                 </div>
 
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button size="icon" variant="outline" onClick={handleSavePhrase} disabled={!translatedText || isCurrentPhraseSaved || isUIBlocked}>
-                      <Star className={`h-5 w-5 ${isCurrentPhraseSaved ? 'fill-yellow-400 text-yellow-500' : ''}`} />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>{isCurrentPhraseSaved ? 'Phrase already saved' : 'Save phrase'}</p>
-                  </TooltipContent>
-                </Tooltip>
+                <div className="flex items-center gap-2">
+                    {children}
+                    <Tooltip>
+                    <TooltipTrigger asChild>
+                        <Button size="icon" variant="outline" onClick={handleSavePhrase} disabled={!translatedText || isCurrentPhraseSaved || isUIBlocked}>
+                        <Star className={`h-5 w-5 ${isCurrentPhraseSaved ? 'fill-yellow-400 text-yellow-500' : ''}`} />
+                        </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                        <p>{isCurrentPhraseSaved ? 'Phrase already saved' : 'Save phrase'}</p>
+                    </TooltipContent>
+                    </Tooltip>
+                </div>
               </div>
           </div>
         </CardContent>

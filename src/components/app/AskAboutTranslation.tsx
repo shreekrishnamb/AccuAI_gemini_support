@@ -67,11 +67,11 @@ export function AskAboutTranslation({ translatedText }: AskAboutTranslationProps
                 <TooltipTrigger asChild>
                     <SheetTrigger asChild>
                         <Button
-                            size="icon"
                             className="ai-button"
                             disabled={!translatedText}
                         >
                             <Sparkles className="h-5 w-5" />
+                            Ask AI
                         </Button>
                     </SheetTrigger>
                 </TooltipTrigger>
