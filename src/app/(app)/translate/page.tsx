@@ -25,6 +25,7 @@ export default function TranslatePage() {
     setSourceLang,
     setTargetLang,
     setSourceText,
+    setTranslatedText,
     setIsTranscribing,
     handleTranslate,
     handleSwapLanguages,
@@ -63,6 +64,7 @@ export default function TranslatePage() {
           sourceText={sourceText}
           setSourceText={setSourceText}
           translatedText={translatedText}
+          setTranslatedText={setTranslatedText}
           isTranslating={isTranslating}
           isTranscribing={isTranscribing}
           setIsTranscribing={setIsTranscribing}

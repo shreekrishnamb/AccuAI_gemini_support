@@ -40,18 +40,26 @@ export function useTranslation() {
 
   const handleTranslate = useCallback(async (textToTranslate?: string) => {
     const text = textToTranslate || sourceText;
-    if (!text.trim()) return;
+    if (!text.trim()) {
+        setTranslatedText('');
+        return;
+    };
 
     setIsTranslating(true);
     setTranslatedText(''); // Clear previous translation
 
     try {
-        const detected = await detectLanguage(text);
-        if (detected && languages.some(l => l.value.startsWith(detected))) {
-          setSourceLang(detected);
+        let detected = sourceLang;
+        // Only detect language if it's different from the current source
+        if (!textToTranslate) { // Auto-detect only for user input, not for transcription.
+            const detectedLang = await detectLanguage(text);
+            if (detectedLang && languages.some(l => l.value.startsWith(detectedLang))) {
+                detected = detectedLang;
+                setSourceLang(detectedLang);
+            }
         }
     
-        const { translation } = await translateText(text, detected || sourceLang, targetLang);
+        const { translation } = await translateText(text, detected, targetLang);
         setTranslatedText(translation);
     } catch (error) {
         toast({
