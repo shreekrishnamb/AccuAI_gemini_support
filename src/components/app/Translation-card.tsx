@@ -29,7 +29,7 @@ interface TranslationCardProps {
   sourceText: string;
   setSourceText: (text: string) => void;
   translatedText: string;
-  setTranslatedText: (text: string) => void; // Add this prop
+  setTranslatedText: (text: string) => void;
   isTranslating: boolean;
   isTranscribing: boolean;
   setIsTranscribing: (isTranscribing: boolean) => void;
@@ -46,7 +46,7 @@ export function TranslationCard({
   sourceText,
   setSourceText,
   translatedText,
-  setTranslatedText, // Destructure new prop
+  setTranslatedText,
   isTranslating,
   isTranscribing,
   setIsTranscribing,
@@ -362,6 +362,7 @@ export function TranslationCard({
               value={translatedText}
               readOnly
               className="min-h-[200px] text-base resize-none bg-muted/50"
+              onChange={(e) => setTranslatedText(e.target.value)}
             />
             {isTranslating && !translatedText && !isTranscribing && (
               <div className="absolute inset-0 flex items-center justify-center bg-background/80 rounded-md">
@@ -424,3 +425,5 @@ export function TranslationCard({
     </TooltipProvider>
   );
 }
+
+    
