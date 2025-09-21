@@ -3,6 +3,7 @@
 
 import Link from 'next/link';
 import { Logo } from '@/components/icons';
+import { Footer } from '@/components/app/Footer';
 
 export default function AppLayout({
   children,
@@ -24,6 +25,7 @@ export default function AppLayout({
           </div>
         </header>
         <main className="flex-1 p-6">{children}</main>
+        <Footer />
     </div>
   );
 }
