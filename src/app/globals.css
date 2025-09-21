@@ -89,6 +89,12 @@ body {
 
 @layer components {
   .ai-button {
-    @apply bg-gradient-to-br from-purple-500 to-blue-500 text-white hover:from-purple-600 hover:to-blue-600;
+    @apply text-white;
+    background-size: 200% auto;
+    background-image: linear-gradient(to right, #8A2BE2 0%, #4169E1 50%, #8A2BE2 100%);
+    transition: background-position 0.5s ease;
+  }
+  .ai-button:hover {
+    background-position: right center;
   }
 }
