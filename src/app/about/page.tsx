@@ -1,7 +1,7 @@
 
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { ArrowLeft, Cpu, Dna, Rocket } from "lucide-react";
+import { ArrowLeft, Cpu, Dna, Rocket, ShieldCheck } from "lucide-react";
 import Link from "next/link";
 import AppLayout from "../(app)/layout";
 
@@ -49,6 +49,20 @@ export default function AboutPage() {
           <CardContent>
             <p className="text-muted-foreground">
               AccuAI is a demonstration project built to showcase the capabilities of modern AI in the realm of real-time language translation. Our goal is to provide a tool that is not only accurate but also intuitive and helpful, allowing users to understand the context and nuances of language, not just the words. This project serves as a practical example for academic purposes, illustrating a full-stack application built with a modern, AI-first technology stack.
+            </p>
+          </CardContent>
+        </Card>
+        
+        <Card className="shadow-lg">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+                <ShieldCheck className="h-6 w-6 text-primary" />
+                Commitment to Privacy
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-muted-foreground">
+              We believe in privacy by design. AccuAI does not require you to create an account or log in. All AI processing is done anonymously, and your translation history is not stored on our servers. Any phrases you choose to save are stored locally on your own device, ensuring that you are the only one with access to them.
             </p>
           </CardContent>
         </Card>

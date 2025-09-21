@@ -2,7 +2,7 @@
 "use client";
 
 import { Trash2 } from 'lucide-react';
-import { Card, CardHeader, CardContent, CardTitle } from '@/components/ui/card';
+import { Card, CardHeader, CardContent, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
@@ -25,6 +25,9 @@ export function SavedPhrases({ savedPhrases, onRemovePhrase, onSelectPhrase }: S
       <Card className="w-full shadow-2xl">
         <CardHeader>
           <CardTitle className="text-2xl font-bold">Saved Phrases</CardTitle>
+          <CardDescription>
+            Your saved phrases are stored locally on your device and are not sent to any servers.
+          </CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
           {savedPhrases.map((phrase, index) => (
