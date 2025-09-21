@@ -81,9 +81,7 @@ export default function DashboardPage() {
               </Link>
             </CardContent>
           </Card>
-        </div>
-        <div className="grid gap-6 mt-6 md:grid-cols-2">
-          <Card className="shadow-lg hover:shadow-xl transition-shadow">
+          <Card className="shadow-lg hover:shadow-xl transition-shadow md:col-span-2">
             <CardHeader className="text-center">
               <CardTitle className="flex items-center justify-center gap-2">
                 <ShieldCheck className="text-primary" />
@@ -94,7 +92,7 @@ export default function DashboardPage() {
               </CardDescription>
             </CardHeader>
           </Card>
-          <Card className="shadow-lg hover:shadow-xl transition-shadow">
+          <Card className="shadow-lg hover:shadow-xl transition-shadow md:col-span-2">
             <CardHeader className="text-center">
               <CardTitle className="flex items-center justify-center gap-2">
                 <Mail className="text-primary" />
