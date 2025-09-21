@@ -1,7 +1,7 @@
 
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
-import { Languages, Book, BotMessageSquare, Mail } from "lucide-react";
+import { Languages, Book, BotMessageSquare, Mail, Info } from "lucide-react";
 import Link from "next/link";
 
 export default function DashboardPage() {
@@ -12,7 +12,7 @@ export default function DashboardPage() {
         <p className="mt-2 text-lg text-muted-foreground">Your intelligent translation companion.</p>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-6 md:grid-cols-2">
         <Card className="shadow-lg hover:shadow-xl transition-shadow">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -60,6 +60,23 @@ export default function DashboardPage() {
           <CardContent>
              <Link href="/blog">
                 <Button className="w-full" variant="outline">Read Blog</Button>
+            </Link>
+          </CardContent>
+        </Card>
+
+        <Card className="shadow-lg hover:shadow-xl transition-shadow">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Info className="text-primary" />
+              About AccuAI
+            </CardTitle>
+            <CardDescription>
+              Learn more about the project and the technology behind it.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+             <Link href="/about">
+                <Button className="w-full" variant="outline">About Page</Button>
             </Link>
           </CardContent>
         </Card>
