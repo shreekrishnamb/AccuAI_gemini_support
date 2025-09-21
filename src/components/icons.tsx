@@ -8,16 +8,15 @@ export const Logo = () => (
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
-      strokeWidth="2"
+      strokeWidth="2.2"
       strokeLinecap="round"
       strokeLinejoin="round"
     >
-      <path d="m5 8 6 6" />
-      <path d="m4 14 6-6 2-3" />
-      <path d="M2 5h12" />
-      <path d="m7 2 5 5" />
-      <path d="m12 20 3-9 3 9" />
-      <path d="M19.5 17h-3" />
+        <path d="M4 14.5L8 6l4-4" />
+        <path d="M4 5h9" />
+        <path d="m9 10.5 4 4L15 10" />
+        <path d="M12.5 20l-3-9 3-9" />
+        <path d="m20.5 12-3 9-3-9" />
     </svg>
   </div>
 );
