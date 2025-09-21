@@ -12,7 +12,7 @@ export const Logo = () => (
       strokeLinecap="round" 
       strokeLinejoin="round"
     >
-      <path d="M12 2l2.35 6.86h6.88l-5.56 4.24 2.14 6.7L12 15.86l-5.81 4.04 2.14-6.7L2.77 8.86h6.88L12 2z"/>
+      <path d="M12 2L14.5 9.5L22 12L14.5 14.5L12 22L9.5 14.5L2 12L9.5 9.5L12 2z"/>
     </svg>
   </div>
 );
