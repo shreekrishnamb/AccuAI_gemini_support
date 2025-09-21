@@ -17,6 +17,8 @@ import { Button } from '@/components/ui/button';
 import { answerQuestion } from '@/app/actions';
 import { Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 import { Separator } from '@/components/ui/separator';
+import { useIsMobile } from '@/hooks/use-mobile';
+import { cn } from '@/lib/utils';
 
 const suggestedQuestions = [
   "Explain this in simpler terms.",
@@ -34,6 +36,7 @@ export function AskAboutTranslation({ translatedText }: AskAboutTranslationProps
   const [answer, setAnswer] = useState('');
   const [isAnswering, setIsAnswering] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
+  const isMobile = useIsMobile();
 
   const handleAskQuestion = async () => {
     if (!question.trim() || !translatedText.trim()) return;
@@ -78,7 +81,13 @@ export function AskAboutTranslation({ translatedText }: AskAboutTranslationProps
             </Tooltip>
         </TooltipProvider>
 
-      <SheetContent className="sm:max-w-lg">
+      <SheetContent 
+        side={isMobile ? 'bottom' : 'right'}
+        className={cn({
+            "sm:max-w-lg": !isMobile,
+            "h-[80vh]": isMobile,
+          })}
+      >
         <SheetHeader>
           <SheetTitle>Ask about the Translation</SheetTitle>
           <SheetDescription>
