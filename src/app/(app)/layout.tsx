@@ -4,6 +4,8 @@
 import Link from 'next/link';
 import { Logo } from '@/components/icons';
 import { Footer } from '@/components/app/Footer';
+import { OfflineIndicator } from '@/components/app/OfflineIndicator';
+
 
 export default function AppLayout({
   children,
@@ -26,6 +28,7 @@ export default function AppLayout({
         </header>
         <main className="flex-1 p-6">{children}</main>
         <Footer />
+        <OfflineIndicator />
     </div>
   );
 }
