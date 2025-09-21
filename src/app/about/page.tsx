@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { ArrowLeft, Cpu, Dna, Rocket, ShieldCheck } from "lucide-react";
 import Link from "next/link";
+import Image from "next/image";
 import AppLayout from "../(app)/layout";
 
 const techStack = [
@@ -41,6 +42,17 @@ export default function AboutPage() {
             Bridging communication gaps with the power of artificial intelligence.
           </p>
         </div>
+        
+        <div className="relative w-full h-80 rounded-lg overflow-hidden shadow-xl">
+             <Image
+                src="https://picsum.photos/seed/technology/1200/600"
+                alt="Abstract technology"
+                fill
+                style={{ objectFit: 'cover' }}
+                data-ai-hint="technology abstract"
+                priority
+              />
+          </div>
 
         <div className="prose prose-lg dark:prose-invert max-w-none mx-auto text-foreground/90 space-y-6">
            <p>
