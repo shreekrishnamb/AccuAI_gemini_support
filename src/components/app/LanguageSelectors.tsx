@@ -42,7 +42,7 @@ export function LanguageSelectors({
         <ArrowRightLeft className="h-5 w-5" />
       </Button>
 
-      <Select value={targetLang} onValueChange={setTargetLang} disabled={isUIBlocked}>
+      <Select value={targetLang} onValuechange={setTargetLang} disabled={isUIBlocked}>
         <SelectTrigger className="w-full sm:w-[180px]">
           <SelectValue placeholder="Target language" />
         </SelectTrigger>
