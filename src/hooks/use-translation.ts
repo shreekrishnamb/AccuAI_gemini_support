@@ -9,7 +9,7 @@ import { SavedPhrase } from '@/lib/types';
 
 export function useTranslation() {
   const [sourceLang, setSourceLang] = useState('en');
-  const [targetLang, setTargetLang] = useState('es');
+  const [targetLang, setTargetLang] = useState('hi');
   const [sourceText, setSourceText] = useState('');
   const [translatedText, setTranslatedText] = useState('');
   const [isTranslating, setIsTranslating] = useState(false);
