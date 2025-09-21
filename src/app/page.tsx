@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from 'react';
@@ -10,6 +11,8 @@ import {
   Pause,
   Play,
   Share2,
+  Star,
+  Trash2,
   Volume2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -17,6 +20,7 @@ import {
   Card,
   CardContent,
   CardHeader,
+  CardTitle,
 } from '@/components/ui/card';
 import {
   Select,
@@ -38,6 +42,15 @@ import { translateText, detectLanguage, answerQuestion, transcribeAudio } from '
 import { Logo } from '@/components/icons';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Separator } from '@/components/ui/separator';
+
+interface SavedPhrase {
+  id: string;
+  sourceText: string;
+  translatedText: string;
+  sourceLang: string;
+  targetLang: string;
+}
 
 export default function Home() {
   const [sourceLang, setSourceLang] = useState('en');
@@ -55,6 +68,7 @@ export default function Home() {
   const [hasMicPermission, setHasMicPermission] = useState<boolean | null>(null);
   const [lastRecordingUrl, setLastRecordingUrl] = useState<string | null>(null);
   const [isPlayingRecording, setIsPlayingRecording] = useState(false);
+  const [savedPhrases, setSavedPhrases] = useState<SavedPhrase[]>([]);
 
   // Client-side-only state
   const [canShare, setCanShare] = useState(false);
@@ -83,6 +97,15 @@ export default function Home() {
         .catch(() => {
           setHasMicPermission(false);
         });
+
+      try {
+        const storedPhrases = localStorage.getItem('savedPhrases');
+        if (storedPhrases) {
+          setSavedPhrases(JSON.parse(storedPhrases));
+        }
+      } catch (error) {
+        console.error("Failed to load saved phrases:", error);
+      }
     }
   }, []);
 
@@ -296,7 +319,34 @@ export default function Home() {
     setIsAnswering(false);
   };
   
+  const handleSavePhrase = () => {
+    if (!sourceText.trim() || !translatedText.trim()) return;
+
+    const newPhrase: SavedPhrase = {
+      id: new Date().toISOString(),
+      sourceText,
+      translatedText,
+      sourceLang,
+      targetLang,
+    };
+    
+    const updatedPhrases = [...savedPhrases, newPhrase];
+    setSavedPhrases(updatedPhrases);
+    localStorage.setItem('savedPhrases', JSON.stringify(updatedPhrases));
+    toast({ title: 'Phrase saved!' });
+  };
+
+  const handleRemovePhrase = (id: string) => {
+    const updatedPhrases = savedPhrases.filter(p => p.id !== id);
+    setSavedPhrases(updatedPhrases);
+    localStorage.setItem('savedPhrases', JSON.stringify(updatedPhrases));
+    toast({ title: 'Phrase removed.' });
+  };
+
   const isUIBlocked = isTranslating || isTranscribing || isRecording;
+  const isCurrentPhraseSaved = savedPhrases.some(
+    p => p.sourceText === sourceText && p.translatedText === translatedText
+  );
 
   if (!isClient) {
     return null;
@@ -452,10 +502,57 @@ export default function Home() {
                      </TooltipContent>
                    </Tooltip>
                 )}
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button size="icon" variant="outline" onClick={handleSavePhrase} disabled={!translatedText || isCurrentPhraseSaved || isUIBlocked}>
+                      <Star className={`h-5 w-5 ${isCurrentPhraseSaved ? 'fill-yellow-400 text-yellow-500' : ''}`} />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>{isCurrentPhraseSaved ? 'Phrase already saved' : 'Save phrase'}</p>
+                  </TooltipContent>
+                </Tooltip>
               </div>
             </div>
           </CardContent>
         </Card>
+
+        {savedPhrases.length > 0 && (
+          <Card className="w-full max-w-4xl shadow-2xl">
+            <CardHeader>
+              <CardTitle className="text-2xl font-bold">Saved Phrases</CardTitle>
+            </CardHeader>
+            <CardContent className="flex flex-col gap-4">
+              {savedPhrases.map((phrase, index) => (
+                <div key={phrase.id}>
+                  <div className="flex justify-between items-start gap-4">
+                    <div className="flex-grow">
+                      <p className="text-sm text-muted-foreground">
+                        {languages.find(l => l.value === phrase.sourceLang)?.label}
+                      </p>
+                      <p className="font-semibold">{phrase.sourceText}</p>
+                      <p className="text-sm text-muted-foreground mt-2">
+                        {languages.find(l => l.value === phrase.targetLang)?.label}
+                      </p>
+                      <p>{phrase.translatedText}</p>
+                    </div>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button variant="ghost" size="icon" onClick={() => handleRemovePhrase(phrase.id)}>
+                          <Trash2 className="h-5 w-5 text-destructive" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Remove phrase</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </div>
+                  {index < savedPhrases.length - 1 && <Separator className="mt-4" />}
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+        )}
 
         {translatedText && (
           <Card className="w-full max-w-4xl shadow-2xl">
@@ -506,3 +603,6 @@ export default function Home() {
     </TooltipProvider>
   );
 }
+
+
+    
