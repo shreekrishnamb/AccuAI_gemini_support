@@ -39,7 +39,7 @@ export function useTranslation() {
   }, [toast]);
 
   const handleTranslate = useCallback(async (textToTranslate?: string) => {
-    const text = textToTranslate || sourceText;
+    const text = textToTranslate ?? sourceText;
     if (!text.trim()) {
         setTranslatedText('');
         return;
@@ -50,8 +50,8 @@ export function useTranslation() {
 
     try {
         let detected = sourceLang;
-        // Only detect language if it's different from the current source
-        if (!textToTranslate) { // Auto-detect only for user input, not for transcription.
+        // Auto-detect only when text is typed/pasted, not when coming from transcription.
+        if (textToTranslate === undefined) { 
             const detectedLang = await detectLanguage(text);
             if (detectedLang && languages.some(l => l.value.startsWith(detectedLang))) {
                 detected = detectedLang;
@@ -70,7 +70,7 @@ export function useTranslation() {
     } finally {
         setIsTranslating(false);
     }
-  }, [sourceText, sourceLang, targetLang, toast]);
+  }, [sourceText, sourceLang, targetLang, toast, setSourceLang]);
   
   const handleSwapLanguages = useCallback(() => {
     if(isTranslating || isTranscribing) return;
