@@ -109,10 +109,11 @@ export function TranslationCard({
       }
     } catch (error: any) {
       console.error("Transcription failed on client", error);
+      const errorMessage = error instanceof Error ? error.message : String(error);
       toast({
         variant: "destructive",
         title: "Transcription Failed",
-        description: error.message || "Could not transcribe the audio. Please try again.",
+        description: errorMessage,
       });
     } finally {
       setIsTranscribing(false);
@@ -208,11 +209,12 @@ export function TranslationCard({
       setIsRecording(true);
     } catch (err) {
       console.error('Error accessing microphone:', err);
+      const errorMessage = err instanceof Error ? err.message : String(err);
       setHasMicPermission(false);
       toast({
         variant: 'destructive',
         title: 'Microphone Access Denied',
-        description: 'Please allow microphone access in your browser settings.',
+        description: errorMessage,
       });
     }
   }, [hasMediaRecorder, toast, handleTranscription]);
@@ -426,4 +428,5 @@ export function TranslationCard({
     </TooltipProvider>
   );
 }
+
 

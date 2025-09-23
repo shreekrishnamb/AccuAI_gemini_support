@@ -4,7 +4,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { languages } from '@/lib/languages';
-import { translateText, detectLanguage } from '@/app/actions';
+import { translateText } from '@/app/actions';
 import { SavedPhrase } from '@/lib/types';
 
 export function useTranslation() {
@@ -29,10 +29,11 @@ export function useTranslation() {
         }
       } catch (error) {
         console.error("Failed to load saved phrases:", error);
+        const errorMessage = error instanceof Error ? error.message : String(error);
         toast({
             variant: "destructive",
             title: "Error loading saved phrases",
-            description: "Could not load phrases from your local storage."
+            description: errorMessage
         });
       }
     }
@@ -52,10 +53,11 @@ export function useTranslation() {
         const { translation } = await translateText(text, sourceLang, targetLang);
         setTranslatedText(translation);
     } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
         toast({
             variant: "destructive",
             title: "Translation Failed",
-            description: "Could not translate the text. Please try again.",
+            description: errorMessage,
         });
     } finally {
         setIsTranslating(false);
@@ -88,11 +90,12 @@ export function useTranslation() {
         localStorage.setItem('savedPhrases', JSON.stringify(updatedPhrases));
         toast({ title: 'Phrase saved!' });
     } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
         console.error("Failed to save phrase:", error);
         toast({
             variant: "destructive",
             title: "Error saving phrase",
-            description: "Could not save the phrase to your local storage."
+            description: errorMessage,
         });
     }
   }, [sourceText, translatedText, sourceLang, targetLang, savedPhrases, toast]);
@@ -104,11 +107,12 @@ export function useTranslation() {
         localStorage.setItem('savedPhrases', JSON.stringify(updatedPhrases));
         toast({ title: 'Phrase removed.' });
     } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
         console.error("Failed to remove phrase:", error);
         toast({
             variant: "destructive",
             title: "Error removing phrase",
-            description: "Could not remove the phrase from your local storage."
+            description: errorMessage,
         });
     }
   }, [savedPhrases, toast]);

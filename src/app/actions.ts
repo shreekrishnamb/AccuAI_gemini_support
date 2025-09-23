@@ -23,10 +23,10 @@ export async function translateText(
       targetLang: targetLanguage,
     });
     return { translation: result.translation };
-  } catch (error) {
+  } catch (error: any) {
     console.error('Translation failed:', error);
     // In case of an error, re-throw to be handled by the client
-    throw new Error('Could not translate text.');
+    throw new Error(error.message || 'Could not translate text.');
   }
 }
 
@@ -53,9 +53,9 @@ export async function answerQuestion(
   try {
     const result = await answerQuestionAboutText({ text, question });
     return result.answer;
-  } catch (error) {
+  } catch (error: any) {
     console.error('Question answering failed:', error);
-    return 'Error: Could not get an answer.';
+    return `Error: ${error.message || 'Could not get an answer.'}`;
   }
 }
 
@@ -68,9 +68,9 @@ export async function transcribeAudio(audioDataUri: string): Promise<string> {
     const result = await transcribeAudioFlow({ audio: audioDataUri });
     console.log('Transcription successful in action:', result.transcription);
     return result.transcription;
-  } catch (error) {
+  } catch (error: any) {
     console.error('Transcription failed in action:', error);
     // Re-throw the error to be caught by the client
-    throw error;
+    throw new Error(error.message || 'Could not transcribe audio.');
   }
 }
