@@ -41,6 +41,7 @@ interface TranslationCardProps {
   sourceLang: string;
   targetLang: string;
   children?: ReactNode;
+  incrementRequestCount: () => void;
 }
 
 export function TranslationCard({
@@ -57,7 +58,8 @@ export function TranslationCard({
   isUIBlocked,
   sourceLang,
   targetLang,
-  children
+  children,
+  incrementRequestCount
 }: TranslationCardProps) {
   const [isRecording, setIsRecording] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
@@ -100,6 +102,7 @@ export function TranslationCard({
 
   const handleTranscription = useCallback(async (audioBlob: Blob) => {
     setIsTranscribing(true);
+    incrementRequestCount();
     try {
       const base64Audio = await blobToBase64(audioBlob);
       const transcription = await transcribeAudio(base64Audio);
@@ -118,7 +121,7 @@ export function TranslationCard({
     } finally {
       setIsTranscribing(false);
     }
-  }, [setSourceText, setIsTranscribing, toast, handleTranslate]);
+  }, [setSourceText, setIsTranscribing, toast, handleTranslate, incrementRequestCount]);
 
 
   const handleStopRecording = useCallback(() => {
@@ -428,5 +431,3 @@ export function TranslationCard({
     </TooltipProvider>
   );
 }
-
-

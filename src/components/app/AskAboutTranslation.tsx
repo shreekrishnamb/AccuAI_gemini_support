@@ -29,9 +29,10 @@ const suggestedQuestions = [
 
 interface AskAboutTranslationProps {
   translatedText: string;
+  incrementRequestCount: () => void;
 }
 
-export function AskAboutTranslation({ translatedText }: AskAboutTranslationProps) {
+export function AskAboutTranslation({ translatedText, incrementRequestCount }: AskAboutTranslationProps) {
   const [question, setQuestion] = useState('');
   const [answer, setAnswer] = useState('');
   const [isAnswering, setIsAnswering] = useState(false);
@@ -42,6 +43,7 @@ export function AskAboutTranslation({ translatedText }: AskAboutTranslationProps
     if (!question.trim() || !translatedText.trim()) return;
     setIsAnswering(true);
     setAnswer('');
+    incrementRequestCount();
     const result = await answerQuestion(translatedText, question);
     setAnswer(result);
     setIsAnswering(false);
