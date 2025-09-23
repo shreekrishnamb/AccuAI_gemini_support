@@ -17,12 +17,6 @@ import {
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
-import {
-  Tooltip,
-  TooltipProvider,
-  TooltipTrigger,
-  TooltipContent,
-} from '@/components/ui/tooltip';
 import { useToast } from '@/hooks/use-toast';
 import { transcribeAudio } from '@/app/actions';
 
@@ -283,27 +277,20 @@ export function TranslationCard({
   };
 
   return (
-    <TooltipProvider>
       <Card className="w-full shadow-2xl">
         <CardContent className="grid md:grid-cols-2 gap-6 pt-6">
           <div className="relative flex flex-col gap-4">
              {sourceText && !isUIBlocked && !isRecording && (
-                <Tooltip>
-                    <TooltipTrigger asChild>
-                        <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            className="absolute top-2 right-2 z-10 h-6 w-6"
-                            onClick={handleClearText}
-                        >
-                            <X className="h-4 w-4" />
-                            <span className="sr-only">Clear text</span>
-                        </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                        <p>Clear text</p>
-                    </TooltipContent>
-                </Tooltip>
+                <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    className="absolute top-2 right-2 z-10 h-6 w-6"
+                    onClick={handleClearText}
+                    title="Clear text"
+                >
+                    <X className="h-4 w-4" />
+                    <span className="sr-only">Clear text</span>
+                </Button>
             )}
             <Textarea
               placeholder="Type text to translate or use the microphone..."
@@ -323,36 +310,24 @@ export function TranslationCard({
             )}
             <div className="flex items-center justify-between gap-2">
               <div className="flex items-center gap-2">
-                <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button 
-                        size="icon"
-                        variant={isRecording ? 'destructive' : 'outline'}
-                        onClick={handleMicClick} 
-                        disabled={hasMicPermission === false || !hasMediaRecorder || isTranscribing}
-                      >
-                        {isRecording ? <Pause className="h-5 w-5" /> : <Mic className="h-5 w-5" />}
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p>{isRecording ? 'Stop recording' : 'Start recording'}</p>
-                    </TooltipContent>
-                </Tooltip>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      size="icon"
-                      variant="outline"
-                      onClick={handlePlayRecording}
-                      disabled={!lastRecordingUrl || isRecording || isTranscribing}
-                    >
-                      {isPlayingRecording ? <Pause className="h-5 w-5" /> : <Play className="h-5 w-5" />}
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>{!lastRecordingUrl ? "No recording to play" : isPlayingRecording ? "Pause recording" : "Play last recording"}</p>
-                  </TooltipContent>
-                </Tooltip>
+                <Button 
+                  size="icon"
+                  variant={isRecording ? 'destructive' : 'outline'}
+                  onClick={handleMicClick} 
+                  disabled={hasMicPermission === false || !hasMediaRecorder || isTranscribing}
+                  title={isRecording ? 'Stop recording' : 'Start recording'}
+                >
+                  {isRecording ? <Pause className="h-5 w-5" /> : <Mic className="h-5 w-5" />}
+                </Button>
+                <Button
+                  size="icon"
+                  variant="outline"
+                  onClick={handlePlayRecording}
+                  disabled={!lastRecordingUrl || isRecording || isTranscribing}
+                  title={!lastRecordingUrl ? "No recording to play" : isPlayingRecording ? "Pause recording" : "Play last recording"}
+                >
+                  {isPlayingRecording ? <Pause className="h-5 w-5" /> : <Play className="h-5 w-5" />}
+                </Button>
               </div>
               <Button onClick={() => handleTranslate()} disabled={!sourceText.trim() || isUIBlocked || isRecording}>
                 {isTranslating && !isTranscribing ? (
@@ -381,57 +356,28 @@ export function TranslationCard({
             )}
              <div className="flex items-center justify-between gap-2">
                 <div className="flex items-center gap-2">
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button size="icon" variant="outline" onClick={handleSpeak} disabled={!translatedText || !hasSpeechSynthesis || isUIBlocked}>
-                        {isSpeaking ? <Pause className="h-5 w-5" /> : <Volume2 className="h-5 w-5" />}
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p>{!hasSpeechSynthesis ? 'Text-to-speech not supported' : 'Listen to translation'}</p>
-                    </TooltipContent>
-                  </Tooltip>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button size="icon" variant="outline" onClick={handleCopy} disabled={!translatedText || isUIBlocked}>
-                        <Copy className="h-5 w-5" />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p>Copy translation</p>
-                    </TooltipContent>
-                  </Tooltip>
+                  <Button size="icon" variant="outline" onClick={handleSpeak} disabled={!translatedText || !hasSpeechSynthesis || isUIBlocked} title={!hasSpeechSynthesis ? 'Text-to-speech not supported' : 'Listen to translation'}>
+                    {isSpeaking ? <Pause className="h-5 w-5" /> : <Volume2 className="h-5 w-5" />}
+                  </Button>
+                  <Button size="icon" variant="outline" onClick={handleCopy} disabled={!translatedText || isUIBlocked} title="Copy translation">
+                    <Copy className="h-5 w-5" />
+                  </Button>
                   {canShare && (
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button size="icon" variant="outline" onClick={handleShare} disabled={!translatedText || isUIBlocked}>
-                            <Share2 className="h-5 w-5" />
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p>Share translation</p>
-                      </TooltipContent>
-                    </Tooltip>
+                    <Button size="icon" variant="outline" onClick={handleShare} disabled={!translatedText || isUIBlocked} title="Share translation">
+                        <Share2 className="h-5 w-5" />
+                    </Button>
                   )}
                   {children}
                 </div>
 
                 <div className="flex items-center gap-2">
-                    <Tooltip>
-                    <TooltipTrigger asChild>
-                        <Button size="icon" variant="outline" onClick={handleSavePhrase} disabled={!translatedText || isCurrentPhraseSaved || isUIBlocked}>
-                        <Star className={`h-5 w-5 ${isCurrentPhraseSaved ? 'fill-yellow-400 text-yellow-500' : ''}`} />
-                        </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                        <p>{isCurrentPhraseSaved ? 'Phrase already saved' : 'Save phrase'}</p>
-                    </TooltipContent>
-                    </Tooltip>
+                    <Button size="icon" variant="outline" onClick={handleSavePhrase} disabled={!translatedText || isCurrentPhraseSaved || isUIBlocked} title={isCurrentPhraseSaved ? 'Phrase already saved' : 'Save phrase'}>
+                      <Star className={`h-5 w-5 ${isCurrentPhraseSaved ? 'fill-yellow-400 text-yellow-500' : ''}`} />
+                    </Button>
                 </div>
               </div>
           </div>
         </CardContent>
       </Card>
-    </TooltipProvider>
   );
 }

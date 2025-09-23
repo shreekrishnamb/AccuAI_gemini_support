@@ -15,7 +15,6 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { answerQuestion } from '@/app/actions';
-import { Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 import { Separator } from '@/components/ui/separator';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { cn } from '@/lib/utils';
@@ -78,24 +77,16 @@ export function AskAboutTranslation({ translatedText, incrementRequestCount }: A
 
   return (
     <Sheet open={isOpen} onOpenChange={handleOpenChange}>
-        <TooltipProvider>
-            <Tooltip>
-                <TooltipTrigger asChild>
-                    <SheetTrigger asChild>
-                        <Button
-                            className="ai-button"
-                            disabled={!translatedText}
-                        >
-                            <Sparkles className="h-5 w-5" />
-                            Get Insights
-                        </Button>
-                    </SheetTrigger>
-                </TooltipTrigger>
-                <TooltipContent>
-                    <p>Get AI-powered insights about the translation</p>
-                </TooltipContent>
-            </Tooltip>
-        </TooltipProvider>
+        <SheetTrigger asChild>
+            <Button
+                className="ai-button"
+                disabled={!translatedText}
+                title="Get AI-powered insights about the translation"
+            >
+                <Sparkles className="h-5 w-5" />
+                Get Insights
+            </Button>
+        </SheetTrigger>
 
       <SheetContent 
         side={isMobile ? 'bottom' : 'right'}
