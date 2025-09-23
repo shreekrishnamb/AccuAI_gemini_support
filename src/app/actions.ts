@@ -3,15 +3,15 @@
 
 import { improveTranslationQuality } from '@/ai/flows/improve-translation-quality';
 import { suggestTranslationLanguages } from '@/ai/flows/suggest-translation-languages';
-import { answerQuestionAboutText } from '@/ai/flows/answer-question-about-text';
-import { transcribeAudio as transcribeAudioFlow } from '@/ai/flows/transcribe-audio';
-import { translateText as translateTextFlow } from '@/ai/flows/translate-text';
+import { answerQuestionAboutText, AnswerQuestionAboutTextOutput } from '@/ai/flows/answer-question-about-text';
+import { transcribeAudio as transcribeAudioFlow, TranscribeAudioOutput } from '@/ai/flows/transcribe-audio';
+import { translateText as translateTextFlow, TranslateTextOutput } from '@/ai/flows/translate-text';
 
 export async function translateText(
   text: string,
   sourceLanguage: string,
   targetLanguage: string
-): Promise<{ translation: string }> {
+): Promise<TranslateTextOutput> {
   if (!text) {
     return { translation: '' };
   }
@@ -22,7 +22,7 @@ export async function translateText(
       sourceLang: sourceLanguage,
       targetLang: targetLanguage,
     });
-    return { translation: result.translation };
+    return result;
   } catch (error: any) {
     console.error('Translation failed:', error);
     // In case of an error, re-throw to be handled by the client
@@ -31,43 +31,43 @@ export async function translateText(
 }
 
 export async function detectLanguage(text: string): Promise<string | null> {
-  if (!text) {
-    return null;
-  }
-  try {
-    const result = await suggestTranslationLanguages({ speechInput: text });
-    return result.sourceLanguage;
-  } catch (error) {
-    console.error('Language detection failed:', error);
-    return null;
-  }
+    if (!text) {
+        return null;
+    }
+    try {
+        const result = await suggestTranslationLanguages({ speechInput: text });
+        return result.sourceLanguage;
+    } catch (error) {
+        console.error('Language detection failed:', error);
+        return null;
+    }
 }
 
 export async function answerQuestion(
   text: string,
   question: string
-): Promise<string> {
+): Promise<AnswerQuestionAboutTextOutput> {
   if (!text || !question) {
-    return '';
+    return { answer: '' };
   }
   try {
     const result = await answerQuestionAboutText({ text, question });
-    return result.answer;
+    return result;
   } catch (error: any) {
     console.error('Question answering failed:', error);
-    return `Error: ${error.message || 'Could not get an answer.'}`;
+    throw new Error(error.message || 'Could not get an answer.');
   }
 }
 
-export async function transcribeAudio(audioDataUri: string): Promise<string> {
+export async function transcribeAudio(audioDataUri: string): Promise<TranscribeAudioOutput> {
   console.log('transcribeAudio action received data URI of length:', audioDataUri.length);
   if (!audioDataUri) {
-    return '';
+    return { transcription: '' };
   }
   try {
     const result = await transcribeAudioFlow({ audio: audioDataUri });
     console.log('Transcription successful in action:', result.transcription);
-    return result.transcription;
+    return result;
   } catch (error: any) {
     console.error('Transcription failed in action:', error);
     // Re-throw the error to be caught by the client

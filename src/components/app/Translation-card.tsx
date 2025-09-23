@@ -41,7 +41,7 @@ interface TranslationCardProps {
   sourceLang: string;
   targetLang: string;
   children?: ReactNode;
-  incrementRequestCount: () => void;
+  incrementRequestCount: (usage: { totalTokens: number }) => void;
 }
 
 export function TranslationCard({
@@ -102,13 +102,17 @@ export function TranslationCard({
 
   const handleTranscription = useCallback(async (audioBlob: Blob) => {
     setIsTranscribing(true);
-    incrementRequestCount();
     try {
       const base64Audio = await blobToBase64(audioBlob);
-      const transcription = await transcribeAudio(base64Audio);
-      setSourceText(transcription);
-      if (transcription) {
-        handleTranslate(transcription);
+      const result = await transcribeAudio(base64Audio);
+      
+      if (result.usage) {
+        incrementRequestCount({ totalTokens: result.usage.totalTokens });
+      }
+
+      setSourceText(result.transcription);
+      if (result.transcription) {
+        handleTranslate(result.transcription);
       }
     } catch (error: any) {
       console.error("Transcription failed on client", error);

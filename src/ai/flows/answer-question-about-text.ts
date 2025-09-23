@@ -19,6 +19,11 @@ export type AnswerQuestionAboutTextInput = z.infer<typeof AnswerQuestionAboutTex
 
 const AnswerQuestionAboutTextOutputSchema = z.object({
   answer: z.string().describe('The answer to the user\'s question, based on the provided text.'),
+  usage: z.object({
+    inputTokens: z.number(),
+    outputTokens: z.number(),
+    totalTokens: z.number(),
+  }).optional(),
 });
 export type AnswerQuestionAboutTextOutput = z.infer<typeof AnswerQuestionAboutTextOutputSchema>;
 
@@ -56,7 +61,15 @@ const answerQuestionAboutTextFlow = ai.defineFlow(
     outputSchema: AnswerQuestionAboutTextOutputSchema,
   },
   async input => {
-    const {output} = await prompt(input);
-    return output!;
+    const response = await prompt(input);
+    const usage = response.usage;
+    return {
+      answer: response.output!,
+      usage: {
+        inputTokens: usage.inputTokens,
+        outputTokens: usage.outputTokens,
+        totalTokens: usage.totalTokens,
+      },
+    };
   }
 );

@@ -18,6 +18,11 @@ export type TranscribeAudioInput = z.infer<typeof TranscribeAudioInputSchema>;
 
 const TranscribeAudioOutputSchema = z.object({
   transcription: z.string().describe('The transcribed text from the audio.'),
+  usage: z.object({
+    inputTokens: z.number(),
+    outputTokens: z.number(),
+    totalTokens: z.number(),
+  }).optional(),
 });
 export type TranscribeAudioOutput = z.infer<typeof TranscribeAudioOutputSchema>;
 
@@ -38,7 +43,7 @@ const transcribeAudioFlow = ai.defineFlow(
       console.log('Audio MIME type:', mimeType);
       
       console.log('Sending to Gemini for transcription...');
-      const {text} = await ai.generate({
+      const response = await ai.generate({
           model: 'googleai/gemini-1.5-flash-latest',
           prompt: [
               {text: 'Transcribe the following audio:'},
@@ -46,11 +51,20 @@ const transcribeAudioFlow = ai.defineFlow(
           ],
       });
       
+      const usage = response.usage;
+      
       // The model sometimes adds a [beep] for silence. Let's remove it.
-      const transcription = text.replace(/^\[beep\]\s*/, '');
+      const transcription = response.text.replace(/^\[beep\]\s*/, '');
 
       console.log('Gemini transcription result:', transcription);
-      return { transcription };
+      return { 
+        transcription,
+        usage: {
+          inputTokens: usage.inputTokens,
+          outputTokens: usage.outputTokens,
+          totalTokens: usage.totalTokens,
+        }
+      };
 
     } catch (e) {
       console.error('Error in transcribeAudioFlow:', e);

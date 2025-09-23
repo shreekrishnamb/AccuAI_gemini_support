@@ -19,6 +19,7 @@ import { Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from '@/comp
 import { Separator } from '@/components/ui/separator';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { cn } from '@/lib/utils';
+import { useToast } from '@/hooks/use-toast';
 
 const suggestedQuestions = [
   "Explain this in simpler terms.",
@@ -29,7 +30,7 @@ const suggestedQuestions = [
 
 interface AskAboutTranslationProps {
   translatedText: string;
-  incrementRequestCount: () => void;
+  incrementRequestCount: (usage: { totalTokens: number }) => void;
 }
 
 export function AskAboutTranslation({ translatedText, incrementRequestCount }: AskAboutTranslationProps) {
@@ -38,15 +39,28 @@ export function AskAboutTranslation({ translatedText, incrementRequestCount }: A
   const [isAnswering, setIsAnswering] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
   const isMobile = useIsMobile();
+  const { toast } = useToast();
 
   const handleAskQuestion = async () => {
     if (!question.trim() || !translatedText.trim()) return;
     setIsAnswering(true);
     setAnswer('');
-    incrementRequestCount();
-    const result = await answerQuestion(translatedText, question);
-    setAnswer(result);
-    setIsAnswering(false);
+
+    try {
+      const result = await answerQuestion(translatedText, question);
+      setAnswer(result.answer);
+      if (result.usage) {
+        incrementRequestCount({ totalTokens: result.usage.totalTokens });
+      }
+    } catch (error: any) {
+       toast({
+        variant: "destructive",
+        title: "Insight Failed",
+        description: error.message || "Could not get an answer.",
+      });
+    } finally {
+      setIsAnswering(false);
+    }
   };
   
   const handleOpenChange = (open: boolean) => {

@@ -4,7 +4,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { languages } from '@/lib/languages';
-import { translateText } from '@/app/actions';
+import { translateText, detectLanguage } from '@/app/actions';
 import { SavedPhrase } from '@/lib/types';
 
 const REQUEST_COUNT_KEY = 'apiRequestCount';
@@ -56,7 +56,7 @@ export function useTranslation() {
     }
   }, [toast]);
 
-  const incrementRequestCount = useCallback(() => {
+  const incrementRequestCount = useCallback((usage?: { totalTokens: number }) => {
     const today = new Date().toISOString().split('T')[0];
     setRequestCount(prev => {
         const newCount = prev.date === today ? prev.count + 1 : 1;
@@ -64,6 +64,9 @@ export function useTranslation() {
         try {
             localStorage.setItem(REQUEST_COUNT_KEY, JSON.stringify(newCountState));
             console.log(`API Request Count: ${newCount} / ${DAILY_LIMIT}`);
+            if (usage) {
+              console.log(`Tokens used in last request: ${usage.totalTokens}`);
+            }
         } catch (error) {
             console.error("Failed to save request count:", error);
         }
@@ -71,31 +74,35 @@ export function useTranslation() {
     });
   }, []);
 
-  const handleTranslate = useCallback(async (textToTranslate?: string) => {
+ const handleTranslate = useCallback(async (textToTranslate?: string) => {
     const text = textToTranslate ?? sourceText;
     if (!text.trim()) {
         setTranslatedText('');
         return;
-    };
+    }
+
+    if (isTranslating) return;
 
     setIsTranslating(true);
-    setTranslatedText(''); // Clear previous translation
-    incrementRequestCount();
+    setTranslatedText('');
 
     try {
-        const { translation } = await translateText(text, sourceLang, targetLang);
-        setTranslatedText(translation);
-    } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : String(error);
+        const result = await translateText(text, sourceLang, targetLang);
+        setTranslatedText(result.translation);
+        if (result.usage) {
+          incrementRequestCount({ totalTokens: result.usage.totalTokens });
+        }
+
+    } catch (error: any) {
         toast({
             variant: "destructive",
             title: "Translation Failed",
-            description: errorMessage,
+            description: error.message || 'Could not translate text.',
         });
     } finally {
         setIsTranslating(false);
     }
-  }, [sourceText, sourceLang, targetLang, toast, incrementRequestCount]);
+}, [sourceText, sourceLang, targetLang, toast, incrementRequestCount, isTranslating]);
   
   const handleSwapLanguages = useCallback(() => {
     if(isTranslating || isTranscribing) return;
