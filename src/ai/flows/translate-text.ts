@@ -1,3 +1,4 @@
+
 'use server';
 
 /**
@@ -20,17 +21,23 @@ export type TranslateTextInput = z.infer<typeof TranslateTextInputSchema>;
 
 const TranslateTextOutputSchema = z.object({
   translation: z.string().describe('The translated text.'),
-  usage: z.object({
-    inputTokens: z.number(),
-    outputTokens: z.number(),
-    totalTokens: z.number(),
-  }).optional(),
 });
 export type TranslateTextOutput = z.infer<typeof TranslateTextOutputSchema>;
 
+const TranslateTextOutputWithUsageSchema = z.object({
+    translation: z.string().describe('The translated text.'),
+    usage: z.object({
+      inputTokens: z.number(),
+      outputTokens: z.number(),
+      totalTokens: z.number(),
+    }).optional(),
+});
+export type TranslateTextOutputWithUsage = z.infer<typeof TranslateTextOutputWithUsageSchema>;
+
+
 export async function translateText(
   input: TranslateTextInput
-): Promise<TranslateTextOutput> {
+): Promise<TranslateTextOutputWithUsage> {
   return translateTextFlow(input);
 }
 
@@ -52,13 +59,15 @@ const translateTextFlow = ai.defineFlow(
   {
     name: 'translateTextFlow',
     inputSchema: TranslateTextInputSchema,
-    outputSchema: TranslateTextOutputSchema,
+    outputSchema: TranslateTextOutputWithUsageSchema,
   },
   async (input) => {
     const response = await prompt(input);
     const usage = response.usage;
+    const output = response.output!;
+
     return {
-      translation: response.output!,
+      translation: output.translation,
       usage: {
         inputTokens: usage.inputTokens,
         outputTokens: usage.outputTokens,
