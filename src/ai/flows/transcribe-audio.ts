@@ -18,11 +18,6 @@ export type TranscribeAudioInput = z.infer<typeof TranscribeAudioInputSchema>;
 
 const TranscribeAudioOutputSchema = z.object({
   transcription: z.string().describe('The transcribed text from the audio.'),
-  usage: z.object({
-    inputTokens: z.number(),
-    outputTokens: z.number(),
-    totalTokens: z.number(),
-  }).optional(),
 });
 export type TranscribeAudioOutput = z.infer<typeof TranscribeAudioOutputSchema>;
 
@@ -51,19 +46,12 @@ const transcribeAudioFlow = ai.defineFlow(
           ],
       });
       
-      const usage = response.usage;
-      
       // The model sometimes adds a [beep] for silence. Let's remove it.
       const transcription = response.text.replace(/^\[beep\]\s*/, '');
 
       console.log('Gemini transcription result:', transcription);
       return { 
-        transcription,
-        usage: {
-          inputTokens: usage.inputTokens,
-          outputTokens: usage.outputTokens,
-          totalTokens: usage.totalTokens,
-        }
+        transcription
       };
 
     } catch (e) {

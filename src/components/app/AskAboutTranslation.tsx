@@ -29,10 +29,9 @@ const suggestedQuestions = [
 
 interface AskAboutTranslationProps {
   translatedText: string;
-  incrementRequestCount: (usage: { totalTokens: number }) => void;
 }
 
-export function AskAboutTranslation({ translatedText, incrementRequestCount }: AskAboutTranslationProps) {
+export function AskAboutTranslation({ translatedText }: AskAboutTranslationProps) {
   const [question, setQuestion] = useState('');
   const [answer, setAnswer] = useState('');
   const [isAnswering, setIsAnswering] = useState(false);
@@ -48,9 +47,6 @@ export function AskAboutTranslation({ translatedText, incrementRequestCount }: A
     try {
       const result = await answerQuestion(translatedText, question);
       setAnswer(result.answer);
-      if (result.usage) {
-        incrementRequestCount({ totalTokens: result.usage.totalTokens });
-      }
     } catch (error: any) {
        toast({
         variant: "destructive",

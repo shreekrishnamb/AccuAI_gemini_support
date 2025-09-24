@@ -5,13 +5,13 @@ import { improveTranslationQuality } from '@/ai/flows/improve-translation-qualit
 import { suggestTranslationLanguages } from '@/ai/flows/suggest-translation-languages';
 import { answerQuestionAboutText, AnswerQuestionAboutTextOutput } from '@/ai/flows/answer-question-about-text';
 import { transcribeAudio as transcribeAudioFlow, TranscribeAudioOutput } from '@/ai/flows/transcribe-audio';
-import { translateText as translateTextFlow, TranslateTextOutputWithUsage } from '@/ai/flows/translate-text';
+import { translateText as translateTextFlow, TranslateTextOutput } from '@/ai/flows/translate-text';
 
 export async function translateText(
   text: string,
   sourceLanguage: string,
   targetLanguage: string
-): Promise<TranslateTextOutputWithUsage> {
+): Promise<TranslateTextOutput> {
   if (!text) {
     return { translation: '' };
   }

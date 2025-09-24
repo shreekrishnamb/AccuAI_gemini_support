@@ -35,7 +35,6 @@ interface TranslationCardProps {
   sourceLang: string;
   targetLang: string;
   children?: ReactNode;
-  incrementRequestCount: (usage: { totalTokens: number }) => void;
 }
 
 export function TranslationCard({
@@ -53,7 +52,6 @@ export function TranslationCard({
   sourceLang,
   targetLang,
   children,
-  incrementRequestCount
 }: TranslationCardProps) {
   const [isRecording, setIsRecording] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
@@ -100,10 +98,6 @@ export function TranslationCard({
       const base64Audio = await blobToBase64(audioBlob);
       const result = await transcribeAudio(base64Audio);
       
-      if (result.usage) {
-        incrementRequestCount({ totalTokens: result.usage.totalTokens });
-      }
-
       setSourceText(result.transcription);
       if (result.transcription) {
         handleTranslate(result.transcription);
@@ -119,7 +113,7 @@ export function TranslationCard({
     } finally {
       setIsTranscribing(false);
     }
-  }, [setSourceText, setIsTranscribing, toast, handleTranslate, incrementRequestCount]);
+  }, [setSourceText, setIsTranscribing, toast, handleTranslate]);
 
 
   const handleStopRecording = useCallback(() => {

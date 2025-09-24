@@ -32,7 +32,6 @@ export default function TranslatePage() {
     handleSavePhrase,
     handleRemovePhrase,
     handleSelectPhrase,
-    incrementRequestCount,
   } = useTranslation();
   
   const isUIBlocked = isTranslating || isTranscribing;
@@ -75,11 +74,9 @@ export default function TranslatePage() {
           isUIBlocked={isUIBlocked}
           sourceLang={sourceLang}
           targetLang={targetLang}
-          incrementRequestCount={incrementRequestCount}
         >
           <AskAboutTranslation 
             translatedText={translatedText}
-            incrementRequestCount={incrementRequestCount}
           />
         </TranslationCard>
         
